@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 class Platform(Enum):
     """Supported release platforms."""
+
     GITLAB = "gitlab"
     GITHUB = "github"
 
@@ -74,7 +75,7 @@ def _get_git_remote_url() -> Optional[str]:
             ["git", "remote", "get-url", "origin"],
             capture_output=True,
             text=True,
-            timeout=5
+            timeout=5,
         )
         if result.returncode == 0:
             return result.stdout.strip()
@@ -155,7 +156,9 @@ def _parse_gitlab_url(remote_url: str) -> Optional[str]:
     return None
 
 
-def get_compare_url(platform: Platform, project_url: str, from_tag: str, to_tag: str) -> str:
+def get_compare_url(
+    platform: Platform, project_url: str, from_tag: str, to_tag: str
+) -> str:
     """
     Generate a comparison URL between two tags.
 

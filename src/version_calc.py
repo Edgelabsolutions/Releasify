@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Version:
     """Semantic version representation."""
+
     major: int
     minor: int
     patch: int
@@ -43,7 +44,7 @@ class Version:
         return version
 
     @classmethod
-    def parse(cls, version_str: str) -> 'Version':
+    def parse(cls, version_str: str) -> "Version":
         """
         Parse a semantic version string.
 
@@ -57,10 +58,10 @@ class Version:
             ValueError: If version string is invalid
         """
         # Remove 'v' prefix if present
-        version_str = version_str.lstrip('v')
+        version_str = version_str.lstrip("v")
 
         # Pattern: major.minor.patch[-prerelease][+build]
-        pattern = r'^(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)(?:-(?P<prerelease>[0-9A-Za-z\-.]+))?(?:\+(?P<build>[0-9A-Za-z\-.]+))?$'
+        pattern = r"^(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)(?:-(?P<prerelease>[0-9A-Za-z\-.]+))?(?:\+(?P<build>[0-9A-Za-z\-.]+))?$"
         match = re.match(pattern, version_str)
 
         if not match:
@@ -68,16 +69,16 @@ class Version:
 
         try:
             return cls(
-                major=int(match.group('major')),
-                minor=int(match.group('minor')),
-                patch=int(match.group('patch')),
-                prerelease=match.group('prerelease'),
-                build=match.group('build')
+                major=int(match.group("major")),
+                minor=int(match.group("minor")),
+                patch=int(match.group("patch")),
+                prerelease=match.group("prerelease"),
+                build=match.group("build"),
             )
         except (ValueError, AttributeError) as e:
             raise ValueError(f"Invalid version format: {version_str}") from e
 
-    def bump(self, bump_type: BumpType) -> 'Version':
+    def bump(self, bump_type: BumpType) -> "Version":
         """
         Create a new version with the specified bump.
 
@@ -96,7 +97,7 @@ class Version:
         else:
             return Version(self.major, self.minor, self.patch)
 
-    def with_prerelease(self, prerelease: str, counter: int = 1) -> 'Version':
+    def with_prerelease(self, prerelease: str, counter: int = 1) -> "Version":
         """
         Create a new version with prerelease identifier.
 
@@ -108,10 +109,7 @@ class Version:
             New Version object with prerelease
         """
         return Version(
-            self.major,
-            self.minor,
-            self.patch,
-            prerelease=f"{prerelease}.{counter}"
+            self.major, self.minor, self.patch, prerelease=f"{prerelease}.{counter}"
         )
 
 
@@ -134,7 +132,7 @@ class VersionCalculator:
         commits: List[ParsedCommit],
         current_version: Optional[Version],
         branch_name: str,
-        max_bump: BumpType
+        max_bump: BumpType,
     ) -> Optional[Version]:
         """
         Calculate the next version based on commits and branch configuration.
@@ -170,9 +168,7 @@ class VersionCalculator:
         if branch_config.prerelease:
             # For prerelease branches, base version on latest stable release
             return self._calculate_prerelease_version(
-                commits,
-                max_bump,
-                branch_config.prerelease
+                commits, max_bump, branch_config.prerelease
             )
         else:
             # For stable branches, calculate next version normally
@@ -180,18 +176,13 @@ class VersionCalculator:
                 base_version = Version(0, 0, 0)
             else:
                 base_version = Version(
-                    current_version.major,
-                    current_version.minor,
-                    current_version.patch
+                    current_version.major, current_version.minor, current_version.patch
                 )
 
             return base_version.bump(max_bump)
 
     def _calculate_prerelease_version(
-        self,
-        commits: List[ParsedCommit],
-        max_bump: BumpType,
-        prerelease_id: str
+        self, commits: List[ParsedCommit], max_bump: BumpType, prerelease_id: str
     ) -> Version:
         """
         Calculate prerelease version based on latest stable release.
@@ -214,11 +205,7 @@ class VersionCalculator:
         next_base_version = stable_version.bump(max_bump)
 
         # Check if there are already prereleases for this base version
-        counter = self._get_prerelease_counter(
-            next_base_version,
-            prerelease_id,
-            ""
-        )
+        counter = self._get_prerelease_counter(next_base_version, prerelease_id, "")
 
         return next_base_version.with_prerelease(prerelease_id, counter)
 
@@ -231,13 +218,13 @@ class VersionCalculator:
         """
         # Fetch tags to ensure we have the latest
         try:
-            self.git._run_git('fetch', '--tags', check=False)
+            self.git._run_git("fetch", "--tags", check=False)
         except (subprocess.CalledProcessError, OSError):
             # Silently ignore fetch failures (might be offline or no remote)
             pass
 
         # Get all tags
-        all_tags = self.git.get_tags_matching('*')
+        all_tags = self.git.get_tags_matching("*")
 
         stable_versions = []
         for tag in all_tags:
@@ -253,17 +240,11 @@ class VersionCalculator:
             return None
 
         # Sort and return the highest stable version
-        stable_versions.sort(
-            key=lambda v: (v.major, v.minor, v.patch),
-            reverse=True
-        )
+        stable_versions.sort(key=lambda v: (v.major, v.minor, v.patch), reverse=True)
         return stable_versions[0]
 
     def _get_prerelease_counter(
-        self,
-        base_version: Version,
-        prerelease_id: str,
-        branch_name: str
+        self, base_version: Version, prerelease_id: str, branch_name: str
     ) -> int:
         """
         Get the next prerelease counter for a version.
@@ -290,7 +271,7 @@ class VersionCalculator:
             try:
                 version = Version.parse(tag)
                 if version.prerelease:
-                    parts = version.prerelease.split('.')
+                    parts = version.prerelease.split(".")
                     if len(parts) >= 2 and parts[0] == prerelease_id:
                         counters.append(int(parts[1]))
             except (ValueError, IndexError):
@@ -336,4 +317,4 @@ class VersionCalculator:
             Formatted tag string
         """
         tag_format = self.config.tag_format
-        return tag_format.replace('${version}', str(version))
+        return tag_format.replace("${version}", str(version))

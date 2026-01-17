@@ -13,7 +13,13 @@ import logging
 from typing import Optional
 from dataclasses import dataclass
 
-from src.platform import Platform, detect_platform, get_tag_url, get_release_url, get_pipeline_url
+from src.platform import (
+    Platform,
+    detect_platform,
+    get_tag_url,
+    get_release_url,
+    get_pipeline_url,
+)
 
 # Configure module logger
 logger = logging.getLogger(__name__)
@@ -22,6 +28,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SlackConfig:
     """Slack notification configuration."""
+
     enabled: bool
     token: Optional[str] = None
     channel: Optional[str] = None
@@ -51,7 +58,9 @@ class SlackNotifier:
                 self.client = WebClient(token=self.config.token)
                 self.SlackApiError = SlackApiError
             except ImportError:
-                logger.warning("slack_sdk not installed. Install with: pip install slack-sdk")
+                logger.warning(
+                    "slack_sdk not installed. Install with: pip install slack-sdk"
+                )
                 self.config.enabled = False
             except Exception as e:
                 logger.warning(f"Failed to initialize Slack client: {e}")
@@ -63,7 +72,7 @@ class SlackNotifier:
         tag: str,
         branch: str,
         project_url: Optional[str] = None,
-        changelog_entry: Optional[str] = None
+        changelog_entry: Optional[str] = None,
     ) -> bool:
         """
         Send success notification for a release.
@@ -88,26 +97,20 @@ class SlackNotifier:
                 "text": {
                     "type": "plain_text",
                     "text": "✅ Release Successful",
-                    "emoji": True
-                }
+                    "emoji": True,
+                },
             },
             {
                 "type": "section",
                 "fields": [
+                    {"type": "mrkdwn", "text": f"*Version:*\n`{version}`"},
+                    {"type": "mrkdwn", "text": f"*Branch:*\n`{branch}`"},
                     {
                         "type": "mrkdwn",
-                        "text": f"*Version:*\n`{version}`"
+                        "text": "*Status:*\n:white_check_mark: Published",
                     },
-                    {
-                        "type": "mrkdwn",
-                        "text": f"*Branch:*\n`{branch}`"
-                    },
-                    {
-                        "type": "mrkdwn",
-                        "text": "*Status:*\n:white_check_mark: Published"
-                    }
-                ]
-            }
+                ],
+            },
         ]
 
         # Add project link if available (platform-aware URLs)
@@ -115,13 +118,15 @@ class SlackNotifier:
             tag_link = get_tag_url(self.platform, project_url, tag)
             release_link = get_release_url(self.platform, project_url, tag)
 
-            blocks.append({
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"<{tag_link}|View Tag> • <{release_link}|View Release>"
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"<{tag_link}|View Tag> • <{release_link}|View Release>",
+                    },
                 }
-            })
+            )
 
         # Add changelog if available
         if changelog_entry:
@@ -130,13 +135,15 @@ class SlackNotifier:
             if len(changelog_entry) > 2000:
                 changelog_text += "\n... (truncated)"
 
-            blocks.append({
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"*Changes:*\n```{changelog_text}```"
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*Changes:*\n```{changelog_text}```",
+                    },
                 }
-            })
+            )
 
         return self._send_message(blocks=blocks)
 
@@ -145,7 +152,7 @@ class SlackNotifier:
         error_message: str,
         branch: str,
         attempted_version: Optional[str] = None,
-        project_url: Optional[str] = None
+        project_url: Optional[str] = None,
     ) -> bool:
         """
         Send failure notification for a release.
@@ -169,60 +176,58 @@ class SlackNotifier:
                 "text": {
                     "type": "plain_text",
                     "text": "❌ Release Failed",
-                    "emoji": True
-                }
+                    "emoji": True,
+                },
             },
             {
                 "type": "section",
                 "fields": [
-                    {
-                        "type": "mrkdwn",
-                        "text": f"*Branch:*\n`{branch}`"
-                    },
-                    {
-                        "type": "mrkdwn",
-                        "text": "*Status:*\n:x: Failed"
-                    }
-                ]
-            }
+                    {"type": "mrkdwn", "text": f"*Branch:*\n`{branch}`"},
+                    {"type": "mrkdwn", "text": "*Status:*\n:x: Failed"},
+                ],
+            },
         ]
 
         # Add version if known
         if attempted_version:
-            blocks[1]["fields"].insert(0, {
-                "type": "mrkdwn",
-                "text": f"*Attempted Version:*\n`{attempted_version}`"
-            })
+            blocks[1]["fields"].insert(
+                0,
+                {
+                    "type": "mrkdwn",
+                    "text": f"*Attempted Version:*\n`{attempted_version}`",
+                },
+            )
 
         # Add error details
-        blocks.append({
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": f"*Error:*\n```{error_message}```"
+        blocks.append(
+            {
+                "type": "section",
+                "text": {"type": "mrkdwn", "text": f"*Error:*\n```{error_message}```"},
             }
-        })
+        )
 
         # Add pipeline link if available (platform-aware)
         if project_url:
             pipeline_link = get_pipeline_url(self.platform)
             if pipeline_link:
-                blocks.append({
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": f"<{pipeline_link}|View Pipeline>"
+                blocks.append(
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": f"<{pipeline_link}|View Pipeline>",
+                        },
                     }
-                })
+                )
 
         return self._send_message(blocks=blocks)
 
     def _is_enabled(self) -> bool:
         """Check if Slack notifications are enabled and configured."""
         return (
-            self.config.enabled and
-            self.client is not None and
-            self.config.channel is not None
+            self.config.enabled
+            and self.client is not None
+            and self.config.channel is not None
         )
 
     def _send_message(self, blocks: list) -> bool:
@@ -242,7 +247,7 @@ class SlackNotifier:
             response = self.client.chat_postMessage(
                 channel=self.config.channel,
                 blocks=blocks,
-                text="Release notification"  # Fallback text for notifications
+                text="Release notification",  # Fallback text for notifications
             )
             return response["ok"]
         except self.SlackApiError as e:
@@ -265,23 +270,19 @@ def create_slack_notifier_from_env() -> SlackNotifier:
     Returns:
         SlackNotifier instance (may be disabled if not configured)
     """
-    token = os.getenv('SLACK_TOKEN')
-    channel = os.getenv('SLACK_CHANNEL')
-    enabled_str = os.getenv('SLACK_ENABLED', '').lower()
+    token = os.getenv("SLACK_TOKEN")
+    channel = os.getenv("SLACK_CHANNEL")
+    enabled_str = os.getenv("SLACK_ENABLED", "").lower()
 
     # Auto-enable if token and channel are present, or if explicitly enabled
-    if enabled_str == 'true':
+    if enabled_str == "true":
         enabled = True
-    elif enabled_str == 'false':
+    elif enabled_str == "false":
         enabled = False
     else:
         # Auto-detect: enabled if both token and channel are set
         enabled = bool(token and channel)
 
-    config = SlackConfig(
-        enabled=enabled,
-        token=token,
-        channel=channel
-    )
+    config = SlackConfig(enabled=enabled, token=token, channel=channel)
 
     return SlackNotifier(config)

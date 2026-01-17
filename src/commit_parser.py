@@ -15,15 +15,17 @@ from enum import Enum
 
 class BumpType(Enum):
     """Version bump types."""
-    MAJOR = 'major'
-    MINOR = 'minor'
-    PATCH = 'patch'
-    NONE = 'none'
+
+    MAJOR = "major"
+    MINOR = "minor"
+    PATCH = "patch"
+    NONE = "none"
 
 
 @dataclass
 class ParsedCommit:
     """Represents a parsed conventional commit."""
+
     sha: str
     type: str
     scope: Optional[str]
@@ -36,7 +38,7 @@ class ParsedCommit:
     def formatted_type(self) -> str:
         """Get formatted commit type for display."""
         if self.breaking:
-            return 'BREAKING CHANGE'
+            return "BREAKING CHANGE"
         return self.type
 
 
@@ -45,14 +47,15 @@ class ConventionalCommitParser:
 
     # Regex for conventional commit format: type(scope): subject
     COMMIT_PATTERN = re.compile(
-        r'^(?P<type>\w+)(?:\((?P<scope>[^)]+)\))?\s*:\s*(?P<subject>.+)$',
-        re.MULTILINE
+        r"^(?P<type>\w+)(?:\((?P<scope>[^)]+)\))?\s*:\s*(?P<subject>.+)$", re.MULTILINE
     )
 
     # Breaking change indicators
     BREAKING_PATTERNS = [
-        re.compile(r'BREAKING[- ]CHANGE:\s*(.+)', re.MULTILINE | re.IGNORECASE),
-        re.compile(r'^(\w+)(?:\([^)]+\))?!:\s*(.+)$', re.MULTILINE),  # feat!: breaking change
+        re.compile(r"BREAKING[- ]CHANGE:\s*(.+)", re.MULTILINE | re.IGNORECASE),
+        re.compile(
+            r"^(\w+)(?:\([^)]+\))?!:\s*(.+)$", re.MULTILINE
+        ),  # feat!: breaking change
     ]
 
     def __init__(self, config):
@@ -64,7 +67,9 @@ class ConventionalCommitParser:
         """
         self.config = config
 
-    def parse(self, commit_message: str, commit_sha: str = '') -> Optional[ParsedCommit]:
+    def parse(
+        self, commit_message: str, commit_sha: str = ""
+    ) -> Optional[ParsedCommit]:
         """
         Parse a commit message.
 
@@ -75,7 +80,7 @@ class ConventionalCommitParser:
         Returns:
             ParsedCommit if valid conventional commit, None otherwise
         """
-        lines = commit_message.strip().split('\n')
+        lines = commit_message.strip().split("\n")
         if not lines:
             return None
 
@@ -86,12 +91,12 @@ class ConventionalCommitParser:
         if not match:
             return None
 
-        commit_type = match.group('type').lower()
-        scope = match.group('scope')
-        subject = match.group('subject').strip()
+        commit_type = match.group("type").lower()
+        scope = match.group("scope")
+        subject = match.group("subject").strip()
 
         # Get body (remaining lines)
-        body = '\n'.join(lines[1:]).strip()
+        body = "\n".join(lines[1:]).strip()
 
         # Check for breaking changes
         breaking = self._is_breaking(header, body)
@@ -106,13 +111,13 @@ class ConventionalCommitParser:
             subject=subject,
             body=body,
             breaking=breaking,
-            bump=bump
+            bump=bump,
         )
 
     def _is_breaking(self, header: str, body: str) -> bool:
         """Check if commit contains breaking changes."""
         # Check for exclamation mark in header (feat!: ...)
-        if '!' in header.split(':')[0]:
+        if "!" in header.split(":")[0]:
             return True
 
         # Check body for BREAKING CHANGE indicators
@@ -143,9 +148,9 @@ class ConventionalCommitParser:
             return BumpType.NONE
 
         bump_map = {
-            'major': BumpType.MAJOR,
-            'minor': BumpType.MINOR,
-            'patch': BumpType.PATCH,
+            "major": BumpType.MAJOR,
+            "minor": BumpType.MINOR,
+            "patch": BumpType.PATCH,
         }
 
         return bump_map.get(type_config.bump, BumpType.NONE)

@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class GitHelper:
     """Helper class for git operations."""
 
-    def __init__(self, repo_path: str = '.'):
+    def __init__(self, repo_path: str = "."):
         """
         Initialize git helper.
 
@@ -29,7 +29,9 @@ class GitHelper:
         """
         self.repo_path = repo_path
 
-    def _run_git(self, *args, capture_output=True, check=True) -> subprocess.CompletedProcess:
+    def _run_git(
+        self, *args, capture_output=True, check=True
+    ) -> subprocess.CompletedProcess:
         """
         Run a git command.
 
@@ -41,12 +43,9 @@ class GitHelper:
         Returns:
             CompletedProcess instance
         """
-        cmd = ['git', '-C', self.repo_path] + list(args)
+        cmd = ["git", "-C", self.repo_path] + list(args)
         return subprocess.run(
-            cmd,
-            capture_output=capture_output,
-            text=True,
-            check=check
+            cmd, capture_output=capture_output, text=True, check=check
         )
 
     def get_current_branch(self) -> str:
@@ -60,28 +59,28 @@ class GitHelper:
         since that determines the type of release (stable vs prerelease).
         """
         # Check GitHub Actions environment first
-        if os.environ.get('GITHUB_ACTIONS') == 'true':
+        if os.environ.get("GITHUB_ACTIONS") == "true":
             return self._get_github_branch()
 
         # Try GitLab CI environment variables
         # In merge requests, use the TARGET branch (where we're merging TO)
         # This ensures we create the right version type (stable for main, prerelease for dev)
-        branch = os.environ.get('CI_MERGE_REQUEST_TARGET_BRANCH_NAME')
+        branch = os.environ.get("CI_MERGE_REQUEST_TARGET_BRANCH_NAME")
         if branch:
             return branch
 
         # For regular pipelines, use CI_COMMIT_BRANCH
-        branch = os.environ.get('CI_COMMIT_BRANCH')
+        branch = os.environ.get("CI_COMMIT_BRANCH")
         if branch:
             return branch
 
         # Fallback to git command for local development
-        result = self._run_git('rev-parse', '--abbrev-ref', 'HEAD')
+        result = self._run_git("rev-parse", "--abbrev-ref", "HEAD")
         branch = result.stdout.strip()
 
         # If still HEAD (detached state), try CI_COMMIT_REF_NAME as last resort
-        if branch == 'HEAD':
-            branch = os.environ.get('CI_COMMIT_REF_NAME', 'HEAD')
+        if branch == "HEAD":
+            branch = os.environ.get("CI_COMMIT_REF_NAME", "HEAD")
 
         return branch
 
@@ -92,27 +91,27 @@ class GitHelper:
         Returns:
             Branch name
         """
-        event_name = os.environ.get('GITHUB_EVENT_NAME', '')
+        event_name = os.environ.get("GITHUB_EVENT_NAME", "")
 
         # For pull requests, use base branch (where code merges TO)
-        if event_name == 'pull_request':
-            branch = os.environ.get('GITHUB_BASE_REF')
+        if event_name == "pull_request":
+            branch = os.environ.get("GITHUB_BASE_REF")
             if branch:
                 return branch
 
         # For push events and others, use GITHUB_REF_NAME
-        branch = os.environ.get('GITHUB_REF_NAME')
+        branch = os.environ.get("GITHUB_REF_NAME")
         if branch:
             return branch
 
         # Fallback: parse from GITHUB_REF (refs/heads/main)
-        ref = os.environ.get('GITHUB_REF', '')
-        if ref.startswith('refs/heads/'):
-            return ref.replace('refs/heads/', '')
-        if ref.startswith('refs/tags/'):
-            return ref.replace('refs/tags/', '')
+        ref = os.environ.get("GITHUB_REF", "")
+        if ref.startswith("refs/heads/"):
+            return ref.replace("refs/heads/", "")
+        if ref.startswith("refs/tags/"):
+            return ref.replace("refs/tags/", "")
 
-        return ref or 'HEAD'
+        return ref or "HEAD"
 
     def get_latest_tag(self, pattern: Optional[str] = None) -> Optional[str]:
         """
@@ -127,18 +126,18 @@ class GitHelper:
         try:
             # Fetch all tags from remote (CI often does shallow clone without tags)
             try:
-                self._run_git('fetch', '--tags', check=False)
+                self._run_git("fetch", "--tags", check=False)
             except (subprocess.CalledProcessError, OSError):
                 # Continue even if fetch fails (might be offline or no remote)
                 pass
 
             # Use git tag with version sorting to get the highest version tag
-            cmd_args = ['tag', '-l', '--sort=-version:refname']
+            cmd_args = ["tag", "-l", "--sort=-version:refname"]
             if pattern:
                 cmd_args.append(pattern)
 
             result = self._run_git(*cmd_args)
-            tags = [t for t in result.stdout.strip().split('\n') if t]
+            tags = [t for t in result.stdout.strip().split("\n") if t]
 
             # Return the first tag (highest version)
             if tags:
@@ -158,8 +157,8 @@ class GitHelper:
             List of matching tag names
         """
         try:
-            result = self._run_git('tag', '-l', pattern)
-            tags = result.stdout.strip().split('\n')
+            result = self._run_git("tag", "-l", pattern)
+            tags = result.stdout.strip().split("\n")
             return [t for t in tags if t]  # Filter empty strings
         except subprocess.CalledProcessError:
             return []
@@ -175,28 +174,25 @@ class GitHelper:
             List of (sha, message) tuples
         """
         if tag:
-            rev_range = f'{tag}..HEAD'
+            rev_range = f"{tag}..HEAD"
         else:
-            rev_range = 'HEAD'
+            rev_range = "HEAD"
 
         try:
             # Format: <sha>|||<subject>\n<body>\n---END---
             result = self._run_git(
-                'log',
-                rev_range,
-                '--format=%H|||%s%n%b---END---',
-                '--no-merges'
+                "log", rev_range, "--format=%H|||%s%n%b---END---", "--no-merges"
             )
 
             commits = []
-            raw_commits = result.stdout.split('---END---\n')
+            raw_commits = result.stdout.split("---END---\n")
 
             for raw in raw_commits:
                 raw = raw.strip()
                 if not raw:
                     continue
 
-                parts = raw.split('|||', 1)
+                parts = raw.split("|||", 1)
                 if len(parts) == 2:
                     sha = parts[0].strip()
                     message = parts[1].strip()
@@ -207,7 +203,7 @@ class GitHelper:
         except subprocess.CalledProcessError:
             return []
 
-    def create_tag(self, tag: str, message: str, sha: str = 'HEAD') -> bool:
+    def create_tag(self, tag: str, message: str, sha: str = "HEAD") -> bool:
         """
         Create an annotated git tag.
 
@@ -220,7 +216,7 @@ class GitHelper:
             True if successful, False otherwise
         """
         try:
-            self._run_git('tag', '-a', tag, '-m', message, sha)
+            self._run_git("tag", "-a", tag, "-m", message, sha)
             logger.info(f"Created git tag: {tag}")
             return True
         except subprocess.CalledProcessError as e:
@@ -250,7 +246,7 @@ class GitHelper:
 
         # Get appropriate token based on platform
         if not token:
-            if platform == 'github':
+            if platform == "github":
                 token = Config.get_github_token()
             else:
                 token = Config.get_gitlab_token()
@@ -261,14 +257,14 @@ class GitHelper:
 
         try:
             # Get current remote URL
-            result = self._run_git('remote', 'get-url', 'origin')
+            result = self._run_git("remote", "get-url", "origin")
             current_url = result.stdout.strip()
 
             # If it's already using token auth, skip
-            if '@' in current_url and token[:8] in current_url:
+            if "@" in current_url and token[:8] in current_url:
                 return True
 
-            if platform == 'github':
+            if platform == "github":
                 return self._configure_github_push_url(token, current_url)
             else:
                 return self._configure_gitlab_push_url(token, current_url)
@@ -279,12 +275,12 @@ class GitHelper:
 
     def _configure_gitlab_push_url(self, token: str, current_url: str) -> bool:
         """Configure push URL for GitLab."""
-        ci_server_url = os.environ.get('CI_SERVER_URL', 'https://gitlab.com')
-        project_path = os.environ.get('CI_PROJECT_PATH')
+        ci_server_url = os.environ.get("CI_SERVER_URL", "https://gitlab.com")
+        project_path = os.environ.get("CI_PROJECT_PATH")
 
         if not project_path:
             # Try to extract from current URL
-            match = re.search(r'([^/:]+/[^/:]+?)(?:\.git)?$', current_url)
+            match = re.search(r"([^/:]+/[^/:]+?)(?:\.git)?$", current_url)
             if match:
                 project_path = match.group(1)
             else:
@@ -295,22 +291,24 @@ class GitHelper:
         auth_url = f"{ci_server_url.replace('://', f'://gitlab-ci-token:{token}@')}/{project_path}.git"
 
         # Set the push URL (keeps fetch URL unchanged)
-        self._run_git('remote', 'set-url', '--push', 'origin', auth_url)
+        self._run_git("remote", "set-url", "--push", "origin", auth_url)
         logger.debug("Configured GitLab push URL with authentication")
         return True
 
     def _configure_github_push_url(self, token: str, current_url: str) -> bool:
         """Configure push URL for GitHub."""
-        server_url = os.environ.get('GITHUB_SERVER_URL', 'https://github.com')
-        repo = os.environ.get('GITHUB_REPOSITORY')
+        server_url = os.environ.get("GITHUB_SERVER_URL", "https://github.com")
+        repo = os.environ.get("GITHUB_REPOSITORY")
 
         if not repo:
             # Try to extract from current URL
-            if 'github.com' in current_url:
-                if current_url.startswith('git@github.com:'):
-                    repo = current_url.replace('git@github.com:', '').rstrip('.git')
+            if "github.com" in current_url:
+                if current_url.startswith("git@github.com:"):
+                    repo = current_url.replace("git@github.com:", "").rstrip(".git")
                 else:
-                    match = re.search(r'github\.com[/:]([^/]+/[^/]+?)(?:\.git)?$', current_url)
+                    match = re.search(
+                        r"github\.com[/:]([^/]+/[^/]+?)(?:\.git)?$", current_url
+                    )
                     if match:
                         repo = match.group(1)
 
@@ -320,10 +318,12 @@ class GitHelper:
 
         # Construct authenticated URL for GitHub
         # GitHub accepts x-access-token as username with the token as password
-        auth_url = f"{server_url.replace('://', f'://x-access-token:{token}@')}/{repo}.git"
+        auth_url = (
+            f"{server_url.replace('://', f'://x-access-token:{token}@')}/{repo}.git"
+        )
 
         # Set the push URL (keeps fetch URL unchanged)
-        self._run_git('remote', 'set-url', '--push', 'origin', auth_url)
+        self._run_git("remote", "set-url", "--push", "origin", auth_url)
         logger.debug("Configured GitHub push URL with authentication")
         return True
 
@@ -338,7 +338,7 @@ class GitHelper:
             True if successful, False otherwise
         """
         try:
-            self._run_git('push', 'origin', tag)
+            self._run_git("push", "origin", tag)
             logger.info(f"Pushed tag to remote: {tag}")
             return True
         except subprocess.CalledProcessError as e:
@@ -361,7 +361,7 @@ class GitHelper:
                 branch = self.get_current_branch()
 
             # Push using HEAD:branch format to handle detached HEAD state
-            self._run_git('push', 'origin', f'HEAD:{branch}')
+            self._run_git("push", "origin", f"HEAD:{branch}")
             logger.info(f"Pushed branch to remote: {branch}")
             return True
         except subprocess.CalledProcessError as e:
@@ -380,8 +380,8 @@ class GitHelper:
             True if successful, False otherwise
         """
         try:
-            self._run_git('add', *files)
-            self._run_git('commit', '-m', message)
+            self._run_git("add", *files)
+            self._run_git("commit", "-m", message)
             logger.info(f"Committed {len(files)} file(s): {message}")
             return True
         except subprocess.CalledProcessError as e:
@@ -399,7 +399,7 @@ class GitHelper:
             True if file has changes, False otherwise
         """
         try:
-            result = self._run_git('diff', '--quiet', file_path, check=False)
+            result = self._run_git("diff", "--quiet", file_path, check=False)
             return result.returncode != 0
         except subprocess.CalledProcessError:
             return False
@@ -407,12 +407,12 @@ class GitHelper:
     def get_commit_count(self) -> int:
         """Get total number of commits in the repository."""
         try:
-            result = self._run_git('rev-list', '--count', 'HEAD')
+            result = self._run_git("rev-list", "--count", "HEAD")
             return int(result.stdout.strip())
         except (subprocess.CalledProcessError, ValueError):
             return 0
 
-    def get_short_sha(self, sha: str = 'HEAD', length: int = 7) -> str:
+    def get_short_sha(self, sha: str = "HEAD", length: int = 7) -> str:
         """
         Get short version of a commit SHA.
 
@@ -424,7 +424,7 @@ class GitHelper:
             Short SHA string
         """
         try:
-            result = self._run_git('rev-parse', '--short=' + str(length), sha)
+            result = self._run_git("rev-parse", "--short=" + str(length), sha)
             return result.stdout.strip()
         except subprocess.CalledProcessError:
             return sha[:length]

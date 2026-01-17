@@ -33,7 +33,13 @@ logger = logging.getLogger(__name__)
 
 class GitLabAPIError(Exception):
     """Custom exception for GitLab API errors."""
-    def __init__(self, message: str, status_code: Optional[int] = None, response_data: Optional[Dict] = None):
+
+    def __init__(
+        self,
+        message: str,
+        status_code: Optional[int] = None,
+        response_data: Optional[Dict] = None,
+    ):
         super().__init__(message)
         self.status_code = status_code
         self.response_data = response_data
@@ -54,7 +60,7 @@ class GitLabAPI:
         self,
         project_url: Optional[str] = None,
         token: Optional[str] = None,
-        timeout: Optional[tuple] = None
+        timeout: Optional[tuple] = None,
     ):
         """
         Initialize GitLab API client.
@@ -67,11 +73,11 @@ class GitLabAPI:
         Raises:
             GitLabAPIError: If token is missing or project info cannot be extracted
         """
-        self.project_url = project_url or os.getenv('CI_PROJECT_URL')
+        self.project_url = project_url or os.getenv("CI_PROJECT_URL")
         self.token = Config.get_gitlab_token(token)
         self.timeout = timeout or self.DEFAULT_TIMEOUT
-        self.server_url = os.getenv('CI_SERVER_URL', 'https://gitlab.com')
-        self.project_id = os.getenv('CI_PROJECT_ID')
+        self.server_url = os.getenv("CI_SERVER_URL", "https://gitlab.com")
+        self.project_id = os.getenv("CI_PROJECT_ID")
 
         if not self.token:
             raise GitLabAPIError(
@@ -103,7 +109,7 @@ class GitLabAPI:
             total=self.MAX_RETRIES,
             backoff_factor=self.RETRY_BACKOFF_FACTOR,
             status_forcelist=self.RETRY_STATUS_CODES,
-            allowed_methods=["GET", "POST", "PUT"]  # Retry safe methods
+            allowed_methods=["GET", "POST", "PUT"],  # Retry safe methods
         )
 
         adapter = HTTPAdapter(max_retries=retry_strategy)
@@ -111,11 +117,13 @@ class GitLabAPI:
         session.mount("https://", adapter)
 
         # Set default headers
-        session.headers.update({
-            'PRIVATE-TOKEN': self.token,
-            'Content-Type': 'application/json',
-            'User-Agent': 'releasify/1.0'
-        })
+        session.headers.update(
+            {
+                "PRIVATE-TOKEN": self.token,
+                "Content-Type": "application/json",
+                "User-Agent": "releasify/1.0",
+            }
+        )
 
         return session
 
@@ -137,12 +145,12 @@ class GitLabAPI:
             self.server_url = f"{parsed.scheme}://{parsed.netloc}"
 
             # Get project path
-            path = parsed.path.strip('/')
-            if path.endswith('.git'):
+            path = parsed.path.strip("/")
+            if path.endswith(".git"):
                 path = path[:-4]
 
             # URL-encode the path to use as project ID
-            self.project_id = quote(path, safe='')
+            self.project_id = quote(path, safe="")
 
             logger.debug(f"Extracted project ID: {self.project_id}")
         except Exception as e:
@@ -153,7 +161,7 @@ class GitLabAPI:
         version: Version,
         tag_name: str,
         description: str,
-        ref: Optional[str] = None
+        ref: Optional[str] = None,
     ) -> bool:
         """
         Create a GitLab release.
@@ -173,13 +181,13 @@ class GitLabAPI:
         url = f"{self.api_url}/projects/{self.project_id}/releases"
 
         data = {
-            'name': f"Release {version}",
-            'tag_name': tag_name,
-            'description': description or f"Release {version}",
+            "name": f"Release {version}",
+            "tag_name": tag_name,
+            "description": description or f"Release {version}",
         }
 
         if ref:
-            data['ref'] = ref
+            data["ref"] = ref
 
         try:
             logger.info(f"Creating GitLab release for {version}")
@@ -195,11 +203,13 @@ class GitLabAPI:
                 return True  # Not an error
             else:
                 error_detail = e.response.text if e.response else str(e)
-                logger.error(f"HTTP error creating release: {e.response.status_code} - {error_detail}")
+                logger.error(
+                    f"HTTP error creating release: {e.response.status_code} - {error_detail}"
+                )
                 raise GitLabAPIError(
                     f"Failed to create release: {e}",
                     status_code=e.response.status_code,
-                    response_data=e.response.json() if e.response else None
+                    response_data=e.response.json() if e.response else None,
                 )
 
         except requests.exceptions.Timeout as e:
@@ -214,7 +224,7 @@ class GitLabAPI:
         self,
         tag_name: str,
         description: Optional[str] = None,
-        name: Optional[str] = None
+        name: Optional[str] = None,
     ) -> bool:
         """
         Update an existing GitLab release.
@@ -234,9 +244,9 @@ class GitLabAPI:
 
         data = {}
         if description:
-            data['description'] = description
+            data["description"] = description
         if name:
-            data['name'] = name
+            data["name"] = name
 
         if not data:
             return True  # Nothing to update
@@ -251,11 +261,13 @@ class GitLabAPI:
 
         except requests.exceptions.HTTPError as e:
             error_detail = e.response.text if e.response else str(e)
-            logger.error(f"HTTP error updating release: {e.response.status_code} - {error_detail}")
+            logger.error(
+                f"HTTP error updating release: {e.response.status_code} - {error_detail}"
+            )
             raise GitLabAPIError(
                 f"Failed to update release: {e}",
                 status_code=e.response.status_code,
-                response_data=e.response.json() if e.response else None
+                response_data=e.response.json() if e.response else None,
             )
 
         except requests.exceptions.Timeout as e:
@@ -291,7 +303,9 @@ class GitLabAPI:
                 logger.debug(f"Release not found: {tag_name}")
                 return None
             logger.error(f"HTTP error getting release: {e}")
-            raise GitLabAPIError(f"Failed to get release: {e}", status_code=e.response.status_code)
+            raise GitLabAPIError(
+                f"Failed to get release: {e}", status_code=e.response.status_code
+            )
 
         except requests.exceptions.Timeout as e:
             logger.error(f"Timeout getting release: {e}")

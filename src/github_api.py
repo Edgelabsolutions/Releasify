@@ -27,7 +27,7 @@ class GitHubAPIError(Exception):
         self,
         message: str,
         status_code: Optional[int] = None,
-        response_data: Optional[Dict] = None
+        response_data: Optional[Dict] = None,
     ):
         super().__init__(message)
         self.status_code = status_code
@@ -51,7 +51,7 @@ class GitHubAPI:
         token: Optional[str] = None,
         repo: Optional[str] = None,
         api_url: Optional[str] = None,
-        timeout: Optional[tuple] = None
+        timeout: Optional[tuple] = None,
     ):
         """
         Initialize GitHub API client.
@@ -103,11 +103,12 @@ class GitHubAPI:
         # Try to parse from git remote
         try:
             import subprocess
+
             result = subprocess.run(
                 ["git", "remote", "get-url", "origin"],
                 capture_output=True,
                 text=True,
-                timeout=5
+                timeout=5,
             )
             if result.returncode == 0:
                 remote_url = result.stdout.strip()
@@ -139,7 +140,7 @@ class GitHubAPI:
             total=self.MAX_RETRIES,
             backoff_factor=self.RETRY_BACKOFF_FACTOR,
             status_forcelist=self.RETRY_STATUS_CODES,
-            allowed_methods=["GET", "POST", "PATCH", "DELETE"]
+            allowed_methods=["GET", "POST", "PATCH", "DELETE"],
         )
 
         adapter = HTTPAdapter(max_retries=retry_strategy)
@@ -147,12 +148,14 @@ class GitHubAPI:
         session.mount("https://", adapter)
 
         # Set default headers per GitHub API requirements
-        session.headers.update({
-            "Authorization": f"Bearer {self.token}",
-            "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": self.API_VERSION,
-            "User-Agent": "releasify/1.0"
-        })
+        session.headers.update(
+            {
+                "Authorization": f"Bearer {self.token}",
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": self.API_VERSION,
+                "User-Agent": "releasify/1.0",
+            }
+        )
 
         return session
 
@@ -163,7 +166,7 @@ class GitHubAPI:
         description: str,
         ref: Optional[str] = None,
         prerelease: bool = False,
-        draft: bool = False
+        draft: bool = False,
     ) -> bool:
         """
         Create a GitHub release.
@@ -189,7 +192,7 @@ class GitHubAPI:
             "name": f"Release {version}",
             "body": description or f"Release {version}",
             "draft": draft,
-            "prerelease": prerelease
+            "prerelease": prerelease,
         }
 
         if ref:
@@ -222,7 +225,7 @@ class GitHubAPI:
             raise GitHubAPIError(
                 f"Failed to create release: {e}",
                 status_code=e.response.status_code,
-                response_data=e.response.json() if e.response else None
+                response_data=e.response.json() if e.response else None,
             )
 
         except requests.exceptions.Timeout as e:
@@ -237,7 +240,7 @@ class GitHubAPI:
         self,
         tag_name: str,
         description: Optional[str] = None,
-        name: Optional[str] = None
+        name: Optional[str] = None,
     ) -> bool:
         """
         Update an existing GitHub release.
@@ -286,7 +289,7 @@ class GitHubAPI:
             raise GitHubAPIError(
                 f"Failed to update release: {e}",
                 status_code=e.response.status_code,
-                response_data=e.response.json() if e.response else None
+                response_data=e.response.json() if e.response else None,
             )
 
         except requests.exceptions.Timeout as e:
@@ -323,8 +326,7 @@ class GitHubAPI:
                 return None
             logger.error(f"HTTP error getting release: {e}")
             raise GitHubAPIError(
-                f"Failed to get release: {e}",
-                status_code=e.response.status_code
+                f"Failed to get release: {e}", status_code=e.response.status_code
             )
 
         except requests.exceptions.Timeout as e:
@@ -369,8 +371,7 @@ class GitHubAPI:
                 logger.debug("No releases found")
                 return None
             raise GitHubAPIError(
-                f"Failed to get latest release: {e}",
-                status_code=e.response.status_code
+                f"Failed to get latest release: {e}", status_code=e.response.status_code
             )
 
         except requests.exceptions.RequestException as e:

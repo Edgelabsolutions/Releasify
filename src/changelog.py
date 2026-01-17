@@ -14,7 +14,13 @@ from datetime import datetime
 from typing import List, Dict, Optional
 from src.commit_parser import ParsedCommit
 from src.version_calc import Version
-from src.platform import Platform, detect_platform, get_project_url, get_compare_url, get_commit_url
+from src.platform import (
+    Platform,
+    detect_platform,
+    get_project_url,
+    get_compare_url,
+    get_commit_url,
+)
 
 # Configure module logger
 logger = logging.getLogger(__name__)
@@ -36,10 +42,7 @@ class ChangelogGenerator:
         self.platform = platform or detect_platform(config.platform)
 
     def update(
-        self,
-        version: Version,
-        commits: List[ParsedCommit],
-        date: datetime = None
+        self, version: Version, commits: List[ParsedCommit], date: datetime = None
     ) -> bool:
         """
         Update CHANGELOG.md with new version information.
@@ -72,7 +75,9 @@ class ChangelogGenerator:
             logger.error(f"Error updating changelog: {e}")
             return False
 
-    def _group_commits(self, commits: List[ParsedCommit]) -> Dict[str, List[ParsedCommit]]:
+    def _group_commits(
+        self, commits: List[ParsedCommit]
+    ) -> Dict[str, List[ParsedCommit]]:
         """
         Group commits by type.
 
@@ -88,7 +93,7 @@ class ChangelogGenerator:
         for commit in commits:
             # Special handling for breaking changes
             if commit.breaking:
-                commit_type = 'breaking'
+                commit_type = "breaking"
             else:
                 commit_type = commit.type
 
@@ -107,7 +112,7 @@ class ChangelogGenerator:
         self,
         version: Version,
         grouped_commits: Dict[str, List[ParsedCommit]],
-        date: datetime
+        date: datetime,
     ) -> str:
         """
         Generate changelog entry for a version.
@@ -126,12 +131,14 @@ class ChangelogGenerator:
         project_url = get_project_url(self.platform)
 
         # Build compare link for version header
-        date_str = date.strftime('%Y-%m-%d')
+        date_str = date.strftime("%Y-%m-%d")
         if project_url:
             # Get previous version for compare link
             prev_version = self._get_previous_version(version)
             if prev_version:
-                compare_link = get_compare_url(self.platform, project_url, prev_version, str(version))
+                compare_link = get_compare_url(
+                    self.platform, project_url, prev_version, str(version)
+                )
                 lines.append(f"# [{version}]({compare_link}) ({date_str})")
             else:
                 lines.append(f"# [{version}] ({date_str})")
@@ -141,13 +148,13 @@ class ChangelogGenerator:
         lines.append("")
 
         # Type headers (in priority order)
-        type_order = ['breaking', 'feat', 'fix', 'perf', 'revert']
+        type_order = ["breaking", "feat", "fix", "perf", "revert"]
         type_labels = {
-            'breaking': 'BREAKING CHANGES',
-            'feat': 'Features',
-            'fix': 'Bug Fixes',
-            'perf': 'Performance Improvements',
-            'revert': 'Reverts',
+            "breaking": "BREAKING CHANGES",
+            "feat": "Features",
+            "fix": "Bug Fixes",
+            "perf": "Performance Improvements",
+            "revert": "Reverts",
         }
 
         for commit_type in type_order:
@@ -180,7 +187,7 @@ class ChangelogGenerator:
 
             lines.append("")
 
-        return '\n'.join(lines)
+        return "\n".join(lines)
 
     def _get_previous_version(self, current_version: Version) -> Optional[str]:
         """
@@ -196,11 +203,11 @@ class ChangelogGenerator:
             return None
 
         try:
-            with open(self.file_path, 'r') as f:
+            with open(self.file_path, "r") as f:
                 content = f.read()
 
             # Find all version headers
-            versions = re.findall(r'^#+ \[([^\]]+)\]', content, re.MULTILINE)
+            versions = re.findall(r"^#+ \[([^\]]+)\]", content, re.MULTILINE)
 
             if len(versions) >= 1:
                 # Return the first version found (most recent before this one)
@@ -217,16 +224,18 @@ class ChangelogGenerator:
         Args:
             new_entry: Formatted changelog entry
         """
-        with open(self.file_path, 'r') as f:
+        with open(self.file_path, "r") as f:
             content = f.read()
 
         # Find where to insert (after title and before first version)
-        lines = content.split('\n')
+        lines = content.split("\n")
         insert_pos = 0
 
         # Skip title and initial content
         for i, line in enumerate(lines):
-            if line.startswith('# [') or line.startswith('## ['):  # First version header
+            if line.startswith("# [") or line.startswith(
+                "## ["
+            ):  # First version header
                 insert_pos = i
                 break
         else:
@@ -236,8 +245,8 @@ class ChangelogGenerator:
         # Insert new entry
         new_lines = lines[:insert_pos] + [new_entry] + lines[insert_pos:]
 
-        with open(self.file_path, 'w') as f:
-            f.write('\n'.join(new_lines))
+        with open(self.file_path, "w") as f:
+            f.write("\n".join(new_lines))
 
     def _create_changelog(self, first_entry: str):
         """
@@ -254,11 +263,11 @@ class ChangelogGenerator:
             "The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),",
             "and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).",
             "",
-            first_entry
+            first_entry,
         ]
 
-        with open(self.file_path, 'w') as f:
-            f.write('\n'.join(content))
+        with open(self.file_path, "w") as f:
+            f.write("\n".join(content))
 
     def get_entry_for_version(self, version: Version) -> str:
         """
@@ -274,7 +283,7 @@ class ChangelogGenerator:
             return ""
 
         try:
-            with open(self.file_path, 'r') as f:
+            with open(self.file_path, "r") as f:
                 content = f.read()
 
             # Find entry for this version
@@ -282,7 +291,7 @@ class ChangelogGenerator:
             # Match both old (##) and new (#) formats
             pattern = re.compile(f"^#+ \\[{re.escape(version_str)}\\]")
 
-            lines = content.split('\n')
+            lines = content.split("\n")
             entry_lines = []
             capturing = False
 
@@ -292,11 +301,11 @@ class ChangelogGenerator:
                     entry_lines.append(line)
                 elif capturing:
                     # Stop at next version header
-                    if line.startswith('# [') or line.startswith('## ['):
+                    if line.startswith("# [") or line.startswith("## ["):
                         break
                     entry_lines.append(line)
 
-            return '\n'.join(entry_lines).strip()
+            return "\n".join(entry_lines).strip()
 
         except Exception as e:
             logger.error(f"Error reading changelog: {e}")

@@ -40,6 +40,7 @@ from src.slack_notifier import SlackNotifier, SlackConfig
 
 class Colors:
     """ANSI color codes for terminal output."""
+
     RED = "\033[31m"
     GREEN = "\033[32m"
     YELLOW = "\033[33m"
@@ -52,7 +53,9 @@ class Colors:
 class ReleaseOrchestrator:
     """Main release orchestrator for GitLab and GitHub."""
 
-    def __init__(self, config_path: str = None, dry_run: bool = False, platform: str = None):
+    def __init__(
+        self, config_path: str = None, dry_run: bool = False, platform: str = None
+    ):
         """
         Initialize release orchestrator.
 
@@ -84,14 +87,14 @@ class ReleaseOrchestrator:
         slack_cfg = self.config.slack_config
         self.slack = SlackNotifier(
             SlackConfig(
-                enabled=slack_cfg.get('enabled', False),
-                token=slack_cfg.get('token'),
-                channel=slack_cfg.get('channel')
+                enabled=slack_cfg.get("enabled", False),
+                token=slack_cfg.get("token"),
+                channel=slack_cfg.get("channel"),
             ),
-            platform=self.platform
+            platform=self.platform,
         )
-        self.notify_success = slack_cfg.get('notify_success', True)
-        self.notify_failure = slack_cfg.get('notify_failure', True)
+        self.notify_success = slack_cfg.get("notify_success", True)
+        self.notify_failure = slack_cfg.get("notify_failure", True)
 
     def _init_release_api(self):
         """Initialize the appropriate release API client based on platform."""
@@ -119,9 +122,11 @@ class ReleaseOrchestrator:
         Returns:
             Dictionary with version information
         """
-        print(f"\n{Colors.BLUE}{'='*60}{Colors.RESET}")
-        print(f"{Colors.CYAN}Analyzing commits for version calculation...{Colors.RESET}")
-        print(f"{Colors.BLUE}{'='*60}{Colors.RESET}\n")
+        print(f"\n{Colors.BLUE}{'=' * 60}{Colors.RESET}")
+        print(
+            f"{Colors.CYAN}Analyzing commits for version calculation...{Colors.RESET}"
+        )
+        print(f"{Colors.BLUE}{'=' * 60}{Colors.RESET}\n")
 
         # Get current branch
         branch = self.git.get_current_branch()
@@ -130,16 +135,22 @@ class ReleaseOrchestrator:
         # Get branch configuration
         branch_config = self.config.get_branch_config(branch)
         if not branch_config:
-            print(f"{Colors.RED}❌ No configuration found for branch '{branch}'{Colors.RESET}")
-            return {'error': f'No configuration for branch {branch}'}
+            print(
+                f"{Colors.RED}❌ No configuration found for branch '{branch}'{Colors.RESET}"
+            )
+            return {"error": f"No configuration for branch {branch}"}
 
         print(f"Branch type: {Colors.GREEN}{branch_config.type}{Colors.RESET}")
         if branch_config.prerelease:
-            print(f"Prerelease identifier: {Colors.YELLOW}{branch_config.prerelease}{Colors.RESET}")
+            print(
+                f"Prerelease identifier: {Colors.YELLOW}{branch_config.prerelease}{Colors.RESET}"
+            )
 
         # Get current version (stable only for release branches)
         is_stable_branch = branch_config.prerelease is None
-        current_version = self.version_calc.get_current_version(stable_only=is_stable_branch)
+        current_version = self.version_calc.get_current_version(
+            stable_only=is_stable_branch
+        )
         if current_version:
             print(f"Current version: {Colors.GREEN}{current_version}{Colors.RESET}")
         else:
@@ -154,19 +165,23 @@ class ReleaseOrchestrator:
             latest_tag = self.git.get_latest_tag()
         commits_data = self.git.get_commits_since_tag(latest_tag)
 
-        print(f"Commits since last release: {Colors.CYAN}{len(commits_data)}{Colors.RESET}")
+        print(
+            f"Commits since last release: {Colors.CYAN}{len(commits_data)}{Colors.RESET}"
+        )
 
         if not commits_data:
             print(f"\n{Colors.YELLOW}⚠️  No new commits found{Colors.RESET}")
             return {
-                'next_version': str(current_version) if current_version else '0.0.0',
-                'last_version': str(current_version) if current_version else '0.0.0',
-                'no_release': True
+                "next_version": str(current_version) if current_version else "0.0.0",
+                "last_version": str(current_version) if current_version else "0.0.0",
+                "no_release": True,
             }
 
         # Parse commits
         parsed_commits = self.parser.parse_commits(commits_data)
-        print(f"Conventional commits found: {Colors.CYAN}{len(parsed_commits)}{Colors.RESET}\n")
+        print(
+            f"Conventional commits found: {Colors.CYAN}{len(parsed_commits)}{Colors.RESET}\n"
+        )
 
         # Display commit summary
         if parsed_commits:
@@ -174,21 +189,20 @@ class ReleaseOrchestrator:
 
         # Determine version bump
         max_bump = self.parser.get_max_bump(parsed_commits)
-        print(f"\nVersion bump required: {Colors.MAGENTA}{max_bump.value}{Colors.RESET}")
+        print(
+            f"\nVersion bump required: {Colors.MAGENTA}{max_bump.value}{Colors.RESET}"
+        )
 
         # Calculate next version
         next_version = self.version_calc.calculate_next_version(
-            parsed_commits,
-            current_version,
-            branch,
-            max_bump
+            parsed_commits, current_version, branch, max_bump
         )
 
         if not next_version:
             return {
-                'next_version': str(current_version) if current_version else '0.0.0',
-                'last_version': str(current_version) if current_version else '0.0.0',
-                'no_release': True
+                "next_version": str(current_version) if current_version else "0.0.0",
+                "last_version": str(current_version) if current_version else "0.0.0",
+                "no_release": True,
             }
 
         print(f"Next version: {Colors.GREEN}{next_version}{Colors.RESET}\n")
@@ -197,10 +211,10 @@ class ReleaseOrchestrator:
         self._print_version_summary(current_version, next_version, branch, max_bump)
 
         return {
-            'next_version': str(next_version),
-            'last_version': str(current_version) if current_version else '0.0.0',
-            'branch': branch,
-            'commits': len(parsed_commits)
+            "next_version": str(next_version),
+            "last_version": str(current_version) if current_version else "0.0.0",
+            "branch": branch,
+            "commits": len(parsed_commits),
         }
 
     def create_release(self) -> dict:
@@ -210,9 +224,9 @@ class ReleaseOrchestrator:
         Returns:
             Dictionary with release information
         """
-        print(f"\n{Colors.BLUE}{'='*60}{Colors.RESET}")
+        print(f"\n{Colors.BLUE}{'=' * 60}{Colors.RESET}")
         print(f"{Colors.CYAN}Creating release...{Colors.RESET}")
-        print(f"{Colors.BLUE}{'='*60}{Colors.RESET}\n")
+        print(f"{Colors.BLUE}{'=' * 60}{Colors.RESET}\n")
 
         # First, generate version info
         version_info = self.generate_version()
@@ -220,22 +234,22 @@ class ReleaseOrchestrator:
         # Get platform-aware project URL
         project_url = get_project_url(self.platform)
 
-        if 'error' in version_info:
+        if "error" in version_info:
             # Send Slack failure notification
             if self.notify_failure:
                 branch = self.git.get_current_branch()
                 self.slack.notify_failure(
-                    error_message=version_info['error'],
+                    error_message=version_info["error"],
                     branch=branch,
-                    project_url=project_url
+                    project_url=project_url,
                 )
-            return {'status': 'failed', 'error': version_info['error']}
+            return {"status": "failed", "error": version_info["error"]}
 
-        if version_info.get('no_release'):
+        if version_info.get("no_release"):
             print(f"\n{Colors.YELLOW}⚠️  No release needed{Colors.RESET}")
-            return {'status': 'skipped', 'reason': 'No commits requiring release'}
+            return {"status": "skipped", "reason": "No commits requiring release"}
 
-        next_version = Version.parse(version_info['next_version'])
+        next_version = Version.parse(version_info["next_version"])
         tag_name = self.version_calc.format_tag(next_version)
 
         # Get branch configuration
@@ -271,27 +285,29 @@ class ReleaseOrchestrator:
                         error_message="Failed to update CHANGELOG.md",
                         branch=branch,
                         attempted_version=str(next_version),
-                        project_url=project_url
+                        project_url=project_url,
                     )
-                return {'status': 'failed', 'error': 'Changelog update failed'}
+                return {"status": "failed", "error": "Changelog update failed"}
         else:
-            print(f"{Colors.YELLOW}⏭️  Skipping CHANGELOG.md update (prerelease){Colors.RESET}")
+            print(
+                f"{Colors.YELLOW}⏭️  Skipping CHANGELOG.md update (prerelease){Colors.RESET}"
+            )
 
         if self.dry_run:
-            print(f"\n{Colors.YELLOW}🔍 DRY RUN - No tags or releases will be created{Colors.RESET}")
-            self._print_release_summary(next_version, tag_name, 'dry-run')
-            return {
-                'status': 'dry-run',
-                'version': str(next_version),
-                'tag': tag_name
-            }
+            print(
+                f"\n{Colors.YELLOW}🔍 DRY RUN - No tags or releases will be created{Colors.RESET}"
+            )
+            self._print_release_summary(next_version, tag_name, "dry-run")
+            return {"status": "dry-run", "version": str(next_version), "tag": tag_name}
 
         # Configure git authentication for pushing
         print(f"{Colors.CYAN}🔐 Configuring git authentication...{Colors.RESET}")
         if self.git.configure_push_url():
             print(f"{Colors.GREEN}✅ Git authentication configured{Colors.RESET}")
         else:
-            print(f"{Colors.YELLOW}⚠️  Could not configure git authentication{Colors.RESET}")
+            print(
+                f"{Colors.YELLOW}⚠️  Could not configure git authentication{Colors.RESET}"
+            )
 
         # Commit CHANGELOG.md (only if it was updated for stable releases)
         if changelog_updated:
@@ -301,11 +317,17 @@ class ReleaseOrchestrator:
                 print(f"{Colors.GREEN}✅ CHANGELOG.md committed{Colors.RESET}")
 
                 # Push CHANGELOG.md commit to branch
-                print(f"{Colors.CYAN}📤 Pushing CHANGELOG.md to remote branch...{Colors.RESET}")
+                print(
+                    f"{Colors.CYAN}📤 Pushing CHANGELOG.md to remote branch...{Colors.RESET}"
+                )
                 if self.git.push_branch():
-                    print(f"{Colors.GREEN}✅ CHANGELOG.md pushed to remote{Colors.RESET}")
+                    print(
+                        f"{Colors.GREEN}✅ CHANGELOG.md pushed to remote{Colors.RESET}"
+                    )
                 else:
-                    print(f"{Colors.YELLOW}⚠️  Could not push CHANGELOG.md (committed locally){Colors.RESET}")
+                    print(
+                        f"{Colors.YELLOW}⚠️  Could not push CHANGELOG.md (committed locally){Colors.RESET}"
+                    )
             else:
                 print(f"{Colors.YELLOW}⚠️  Could not commit CHANGELOG.md{Colors.RESET}")
 
@@ -322,16 +344,18 @@ class ReleaseOrchestrator:
                     error_message="Failed to create git tag",
                     branch=branch,
                     attempted_version=str(next_version),
-                    project_url=project_url
+                    project_url=project_url,
                 )
-            return {'status': 'failed', 'error': 'Tag creation failed'}
+            return {"status": "failed", "error": "Tag creation failed"}
 
         # Push tag to remote
         print(f"{Colors.CYAN}📤 Pushing git tag to remote...{Colors.RESET}")
         if self.git.push_tag(tag_name):
             print(f"{Colors.GREEN}✅ Git tag pushed to remote{Colors.RESET}")
         else:
-            print(f"{Colors.YELLOW}⚠️  Failed to push tag (tag created locally){Colors.RESET}")
+            print(
+                f"{Colors.YELLOW}⚠️  Failed to push tag (tag created locally){Colors.RESET}"
+            )
 
         # Create platform release (GitLab or GitHub)
         if self.release_api:
@@ -351,8 +375,11 @@ class ReleaseOrchestrator:
             try:
                 if self.platform == Platform.GITHUB:
                     success = self.release_api.create_release(
-                        next_version, tag_name, release_description,
-                        ref=current_branch, prerelease=is_prerelease
+                        next_version,
+                        tag_name,
+                        release_description,
+                        ref=current_branch,
+                        prerelease=is_prerelease,
                     )
                 else:
                     success = self.release_api.create_release(
@@ -360,14 +387,18 @@ class ReleaseOrchestrator:
                     )
 
                 if success:
-                    print(f"{Colors.GREEN}{platform_name} release created{Colors.RESET}")
+                    print(
+                        f"{Colors.GREEN}{platform_name} release created{Colors.RESET}"
+                    )
             except (GitLabAPIError, GitHubAPIError) as e:
                 logger = logging.getLogger(__name__)
                 logger.error(f"{platform_name} release creation failed: {e}")
-                print(f"{Colors.YELLOW}{platform_name} release creation failed (tag still created){Colors.RESET}")
+                print(
+                    f"{Colors.YELLOW}{platform_name} release creation failed (tag still created){Colors.RESET}"
+                )
 
         # Print summary
-        self._print_release_summary(next_version, tag_name, 'success')
+        self._print_release_summary(next_version, tag_name, "success")
 
         # Send Slack success notification
         if self.notify_success:
@@ -380,14 +411,10 @@ class ReleaseOrchestrator:
                 tag=tag_name,
                 branch=branch,
                 project_url=project_url,
-                changelog_entry=changelog_entry
+                changelog_entry=changelog_entry,
             )
 
-        return {
-            'status': 'success',
-            'version': str(next_version),
-            'tag': tag_name
-        }
+        return {"status": "success", "version": str(next_version), "tag": tag_name}
 
     def _display_commit_summary(self, commits):
         """Display summary of parsed commits."""
@@ -402,7 +429,7 @@ class ReleaseOrchestrator:
     def _print_version_summary(self, current, next_ver, branch, bump):
         """Print formatted version summary box."""
         width = 60
-        bar = '─' * width
+        bar = "─" * width
 
         print(f"{Colors.GREEN}┌{bar}┐{Colors.RESET}")
         print(f"{Colors.GREEN}│{Colors.RESET} 🧮 Version Summary")
@@ -416,7 +443,7 @@ class ReleaseOrchestrator:
     def _print_release_summary(self, version, tag, status):
         """Print formatted release summary box."""
         width = 60
-        bar = '─' * width
+        bar = "─" * width
 
         print(f"\n{Colors.GREEN}┌{bar}┐{Colors.RESET}")
         print(f"{Colors.GREEN}│{Colors.RESET} 🏁 Release Summary")
@@ -427,7 +454,9 @@ class ReleaseOrchestrator:
         print(f"{Colors.GREEN}└{bar}┘{Colors.RESET}\n")
 
 
-def validate_message(config_path: str = None, message: str = None, message_file: str = None):
+def validate_message(
+    config_path: str = None, message: str = None, message_file: str = None
+):
     """
     Validate a commit message.
 
@@ -441,19 +470,21 @@ def validate_message(config_path: str = None, message: str = None, message_file:
 
     # Get message
     if message_file:
-        with open(message_file, 'r') as f:
+        with open(message_file, "r") as f:
             message = f.read()
     elif not message:
-        print(f"{Colors.RED}❌ No message provided. Use --message or --message-file{Colors.RESET}")
+        print(
+            f"{Colors.RED}❌ No message provided. Use --message or --message-file{Colors.RESET}"
+        )
         sys.exit(1)
 
     # Validate
     is_valid, formatted = validate_commit_message(message, config)
 
     # Print results
-    print(f"\n{Colors.CYAN}{'='*60}{Colors.RESET}")
+    print(f"\n{Colors.CYAN}{'=' * 60}{Colors.RESET}")
     print(f"{Colors.CYAN}📝 Commit Message Validation{Colors.RESET}")
-    print(f"{Colors.CYAN}{'='*60}{Colors.RESET}\n")
+    print(f"{Colors.CYAN}{'=' * 60}{Colors.RESET}\n")
 
     print(f"{Colors.YELLOW}Message:{Colors.RESET}")
     print(message)
@@ -469,69 +500,67 @@ def validate_message(config_path: str = None, message: str = None, message_file:
 def main():
     """Main entry point."""
     # Configure logging before any other operations
-    log_level = os.getenv('LOG_LEVEL', 'INFO').upper()
+    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
     logging.basicConfig(
         level=getattr(logging, log_level, logging.INFO),
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S',
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
         handlers=[
             logging.StreamHandler(sys.stdout),  # Console output
-        ]
+        ],
     )
 
     # Optionally add file handler if LOG_FILE environment variable is set
-    if log_file := os.getenv('LOG_FILE'):
+    if log_file := os.getenv("LOG_FILE"):
         file_handler = logging.FileHandler(log_file)
-        file_handler.setFormatter(logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        ))
+        file_handler.setFormatter(
+            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        )
         logging.getLogger().addHandler(file_handler)
 
     parser = argparse.ArgumentParser(
-        description='Release automation for GitLab and GitHub projects'
+        description="Release automation for GitLab and GitHub projects"
     )
 
     parser.add_argument(
-        'action',
-        choices=['generate-version', 'release', 'validate'],
-        help='Action to perform: generate-version (calculate only), release (create full release), or validate (check commit message)'
+        "action",
+        choices=["generate-version", "release", "validate"],
+        help="Action to perform: generate-version (calculate only), release (create full release), or validate (check commit message)",
     )
 
     parser.add_argument(
-        '--config',
-        help='Path to configuration file (default: config.yaml in repo root)',
-        default=None
+        "--config",
+        help="Path to configuration file (default: config.yaml in repo root)",
+        default=None,
     )
 
     parser.add_argument(
-        '--platform',
-        choices=['auto', 'gitlab', 'github'],
-        help='Platform to use (default: auto-detect)',
-        default=None
+        "--platform",
+        choices=["auto", "gitlab", "github"],
+        help="Platform to use (default: auto-detect)",
+        default=None,
     )
 
     parser.add_argument(
-        '--dry-run',
-        action='store_true',
-        help='Perform a dry run without creating tags or releases'
+        "--dry-run",
+        action="store_true",
+        help="Perform a dry run without creating tags or releases",
     )
 
     parser.add_argument(
-        '--output',
-        help='Output file for version info (dotenv format)',
-        default=None
+        "--output", help="Output file for version info (dotenv format)", default=None
     )
 
     parser.add_argument(
-        '--message',
-        help='Commit message to validate (for validate action)',
-        default=None
+        "--message",
+        help="Commit message to validate (for validate action)",
+        default=None,
     )
 
     parser.add_argument(
-        '--message-file',
-        help='File containing commit message to validate (for validate action)',
-        default=None
+        "--message-file",
+        help="File containing commit message to validate (for validate action)",
+        default=None,
     )
 
     args = parser.parse_args()
@@ -539,29 +568,29 @@ def main():
     # Create orchestrator
     orchestrator = ReleaseOrchestrator(
         config_path=args.config,
-        dry_run=args.dry_run or (args.action == 'generate-version'),
-        platform=args.platform
+        dry_run=args.dry_run or (args.action == "generate-version"),
+        platform=args.platform,
     )
 
     # Execute action
-    if args.action == 'validate':
+    if args.action == "validate":
         # Validate action doesn't need orchestrator
         validate_message(args.config, args.message, args.message_file)
         return  # validate_message exits
-    elif args.action == 'generate-version':
+    elif args.action == "generate-version":
         result = orchestrator.generate_version()
     else:
         result = orchestrator.create_release()
 
     # Write output file if requested
     if args.output:
-        with open(args.output, 'w') as f:
+        with open(args.output, "w") as f:
             # For generate-version action
-            if 'next_version' in result:
+            if "next_version" in result:
                 f.write(f"NEXT_RELEASE_VERSION={result['next_version']}\n")
                 f.write(f"LAST_RELEASE_VERSION={result['last_version']}\n")
             # For release action
-            elif 'version' in result:
+            elif "version" in result:
                 f.write(f"RELEASE_VERSION={result['version']}\n")
                 f.write(f"RELEASE_TAG={result.get('tag', result['version'])}\n")
                 f.write(f"RELEASE_STATUS={result.get('status', 'unknown')}\n")
@@ -569,13 +598,13 @@ def main():
         print(f"\n{Colors.GREEN}✅ Version info written to {args.output}{Colors.RESET}")
 
     # Exit with appropriate code
-    if result.get('status') == 'failed':
+    if result.get("status") == "failed":
         sys.exit(1)
-    elif result.get('error'):
+    elif result.get("error"):
         sys.exit(1)
     else:
         sys.exit(0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
