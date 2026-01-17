@@ -27,14 +27,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from src.config import Config
-from src.commit_parser import ConventionalCommitParser, BumpType
+from src.commit_parser import ConventionalCommitParser
 from src.version_calc import VersionCalculator, Version
 from src.git_helper import GitHelper
 from src.changelog import ChangelogGenerator
 from src.gitlab_api import GitLabAPI, GitLabAPIError
 from src.github_api import GitHubAPI, GitHubAPIError
 from src.platform import Platform, detect_platform, get_project_url
-from src.commit_validator import CommitMessageValidator, validate_commit_message
+from src.commit_validator import validate_commit_message
 from src.slack_notifier import SlackNotifier, SlackConfig
 
 

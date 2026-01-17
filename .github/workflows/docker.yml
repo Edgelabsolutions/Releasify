@@ -13,7 +13,7 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: ${{ github.repository_owner }}/releasify
 
 jobs:
   build-and-push:
@@ -38,36 +38,42 @@ jobs:
 
       - name: Build and push Docker image
         run: |
+          # Lowercase the image name (Docker requires lowercase)
+          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          IMAGE="${IMAGE,,}"
+
           # Determine tags
           TAGS=""
 
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            TAGS="$TAGS -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+            TAGS="$TAGS -t ${IMAGE}:latest"
           fi
 
           if [ "${{ github.ref }}" == "refs/heads/dev" ]; then
-            TAGS="$TAGS -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:dev-latest"
+            TAGS="$TAGS -t ${IMAGE}:dev-latest"
           fi
 
           # Add SHA tag
-          TAGS="$TAGS -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${GITHUB_SHA::7}"
+          TAGS="$TAGS -t ${IMAGE}:${GITHUB_SHA::7}"
 
           # Add version tag for releases
           if [ "${{ github.event_name }}" == "release" ]; then
             VERSION="${{ github.event.release.tag_name }}"
             VERSION="${VERSION#v}"
-            TAGS="$TAGS -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$VERSION"
+            TAGS="$TAGS -t ${IMAGE}:$VERSION"
           fi
 
           echo "Building with tags: $TAGS"
           docker build $TAGS .
 
           echo "Pushing images..."
-          docker push --all-tags ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          docker push --all-tags ${IMAGE}
 
       - name: Output image info
         run: |
+          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          IMAGE="${IMAGE,,}"
           echo "## Docker Image Published" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Image:** \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`${IMAGE}\`" >> $GITHUB_STEP_SUMMARY
           echo "**SHA:** \`${GITHUB_SHA::7}\`" >> $GITHUB_STEP_SUMMARY
