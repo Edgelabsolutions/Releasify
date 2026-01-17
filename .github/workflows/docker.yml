@@ -1,10 +1,8 @@
-name: Docker
+name: Docker Dev
 
 on:
   push:
-    branches: [main, dev]
-  release:
-    types: [published]
+    branches: [dev]
   workflow_dispatch:
 
 concurrency:
@@ -16,14 +14,12 @@ env:
   IMAGE_NAME: ${{ github.repository_owner }}/releasify
 
 jobs:
-  build-and-push:
-    name: Build and Push
+  build-dev:
+    name: Build Dev Image
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-      attestations: write
-      id-token: write
 
     steps:
       - name: Checkout code
@@ -42,30 +38,18 @@ jobs:
           IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
           IMAGE="${IMAGE,,}"
 
-          # Determine tags
-          TAGS=""
+          echo "=================================================="
+          echo "Building Dev Docker Image"
+          echo "=================================================="
+          echo "Image: $IMAGE"
+          echo ""
 
-          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            TAGS="$TAGS -t ${IMAGE}:latest"
-          fi
+          docker build \
+            -t ${IMAGE}:dev-latest \
+            -t ${IMAGE}:dev-${GITHUB_SHA::7} \
+            .
 
-          if [ "${{ github.ref }}" == "refs/heads/dev" ]; then
-            TAGS="$TAGS -t ${IMAGE}:dev-latest"
-          fi
-
-          # Add SHA tag
-          TAGS="$TAGS -t ${IMAGE}:${GITHUB_SHA::7}"
-
-          # Add version tag for releases
-          if [ "${{ github.event_name }}" == "release" ]; then
-            VERSION="${{ github.event.release.tag_name }}"
-            VERSION="${VERSION#v}"
-            TAGS="$TAGS -t ${IMAGE}:$VERSION"
-          fi
-
-          echo "Building with tags: $TAGS"
-          docker build $TAGS .
-
+          echo ""
           echo "Pushing images..."
           docker push --all-tags ${IMAGE}
 
@@ -73,7 +57,7 @@ jobs:
         run: |
           IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
           IMAGE="${IMAGE,,}"
-          echo "## Docker Image Published" >> $GITHUB_STEP_SUMMARY
+          echo "## Dev Docker Image Published" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Image:** \`${IMAGE}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**SHA:** \`${GITHUB_SHA::7}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`${IMAGE}:dev-latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "**SHA:** \`dev-${GITHUB_SHA::7}\`" >> $GITHUB_STEP_SUMMARY

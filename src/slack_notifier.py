@@ -10,7 +10,7 @@ This module provides:
 
 import os
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional
 from dataclasses import dataclass
 
 from src.platform import Platform, detect_platform, get_tag_url, get_release_url, get_pipeline_url
@@ -104,7 +104,7 @@ class SlackNotifier:
                     },
                     {
                         "type": "mrkdwn",
-                        "text": f"*Status:*\n:white_check_mark: Published"
+                        "text": "*Status:*\n:white_check_mark: Published"
                     }
                 ]
             }
@@ -181,7 +181,7 @@ class SlackNotifier:
                     },
                     {
                         "type": "mrkdwn",
-                        "text": f"*Status:*\n:x: Failed"
+                        "text": "*Status:*\n:x: Failed"
                     }
                 ]
             }

@@ -294,13 +294,11 @@ class ReleaseOrchestrator:
             print(f"{Colors.YELLOW}⚠️  Could not configure git authentication{Colors.RESET}")
 
         # Commit CHANGELOG.md (only if it was updated for stable releases)
-        changelog_committed = False
         if changelog_updated:
             print(f"{Colors.CYAN}📦 Committing CHANGELOG.md...{Colors.RESET}")
             commit_msg = f"chore(release): {next_version}"
             if self.git.commit_files([self.config.changelog_file], commit_msg):
                 print(f"{Colors.GREEN}✅ CHANGELOG.md committed{Colors.RESET}")
-                changelog_committed = True
 
                 # Push CHANGELOG.md commit to branch
                 print(f"{Colors.CYAN}📤 Pushing CHANGELOG.md to remote branch...{Colors.RESET}")

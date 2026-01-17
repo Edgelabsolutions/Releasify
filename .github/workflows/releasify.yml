@@ -15,6 +15,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/releasify
+
 jobs:
   generate-version:
     name: Generate Version
@@ -27,6 +31,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.NEXT_RELEASE_VERSION }}
       last_version: ${{ steps.version.outputs.LAST_RELEASE_VERSION }}
+      should_release: ${{ steps.check.outputs.should_release }}
 
     # Skip release commits to avoid loops
     if: "!startsWith(github.event.head_commit.message, 'chore(release)')"
@@ -67,7 +72,78 @@ jobs:
             echo "No new version needed"
           fi
 
-    # Artifact not needed - using job outputs instead
+      - name: Check if release needed
+        id: check
+        run: |
+          VERSION="${{ steps.version.outputs.NEXT_RELEASE_VERSION }}"
+          if [ -n "$VERSION" ] && [ "$VERSION" != "0.0.0" ]; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "Release needed for version: $VERSION"
+          else
+            echo "should_release=false" >> $GITHUB_OUTPUT
+            echo "No release needed (no conventional commits or version is 0.0.0)"
+          fi
+
+  build-docker:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: generate-version
+    if: needs.generate-version.outputs.should_release == 'true' && github.event.inputs.dry_run != 'true'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        env:
+          VERSION: ${{ needs.generate-version.outputs.version }}
+        run: |
+          # Lowercase the image name (Docker requires lowercase)
+          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          IMAGE="${IMAGE,,}"
+
+          echo "=================================================="
+          echo "Building Docker Image"
+          echo "=================================================="
+          echo "Version: $VERSION"
+          echo "Image: $IMAGE"
+          echo ""
+
+          # Build with version tag and latest
+          docker build \
+            -t ${IMAGE}:${VERSION} \
+            -t ${IMAGE}:latest \
+            -t ${IMAGE}:${GITHUB_SHA::7} \
+            .
+
+          echo ""
+          echo "Pushing images..."
+          docker push --all-tags ${IMAGE}
+
+          echo ""
+          echo "Docker image pushed successfully!"
+
+      - name: Output image info
+        env:
+          VERSION: ${{ needs.generate-version.outputs.version }}
+        run: |
+          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          IMAGE="${IMAGE,,}"
+          echo "## Docker Image Published" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`${IMAGE}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** \`${VERSION}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**SHA:** \`${GITHUB_SHA::7}\`" >> $GITHUB_STEP_SUMMARY
 
   create-release:
     name: Create Release
@@ -77,8 +153,8 @@ jobs:
     permissions:
       contents: write
       packages: read
-    needs: generate-version
-    if: needs.generate-version.outputs.version != '' && github.event.inputs.dry_run != 'true'
+    needs: [generate-version, build-docker]
+    if: needs.generate-version.outputs.should_release == 'true' && github.event.inputs.dry_run != 'true'
 
     steps:
       - name: Checkout code
@@ -96,13 +172,7 @@ jobs:
           echo "=================================================="
           echo "Creating Release"
           echo "=================================================="
-
-          if [ -z "$NEXT_RELEASE_VERSION" ]; then
-            echo "No new version to release"
-            exit 0
-          fi
-
-          echo "Creating release for version: $NEXT_RELEASE_VERSION"
+          echo "Version: $NEXT_RELEASE_VERSION"
           echo ""
 
           git config --global user.name "github-actions[bot]"
@@ -117,7 +187,7 @@ jobs:
   summary:
     name: Output Summary
     runs-on: ubuntu-latest
-    needs: [generate-version, create-release]
+    needs: [generate-version, build-docker, create-release]
     if: always()
 
     steps:
@@ -125,13 +195,27 @@ jobs:
         run: |
           echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ -n "${{ needs.generate-version.outputs.version }}" ]; then
-            echo "**New Version:** ${{ needs.generate-version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+
+          VERSION="${{ needs.generate-version.outputs.version }}"
+          SHOULD_RELEASE="${{ needs.generate-version.outputs.should_release }}"
+
+          if [ "$SHOULD_RELEASE" == "true" ]; then
+            echo "**New Version:** ${VERSION}" >> $GITHUB_STEP_SUMMARY
             echo "**Previous Version:** ${{ needs.generate-version.outputs.last_version }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
             if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
-              echo "" >> $GITHUB_STEP_SUMMARY
               echo "> This was a dry run. No release was created." >> $GITHUB_STEP_SUMMARY
+            else
+              IMAGE="ghcr.io/${{ env.IMAGE_NAME }}"
+              IMAGE="${IMAGE,,}"
+              echo "**Docker Image:** \`${IMAGE}:${VERSION}\`" >> $GITHUB_STEP_SUMMARY
             fi
           else
-            echo "No version bump required (no conventional commits found)." >> $GITHUB_STEP_SUMMARY
+            echo "No version bump required." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "To trigger a release, use conventional commit messages:" >> $GITHUB_STEP_SUMMARY
+            echo "- \`feat: description\` - Minor version bump" >> $GITHUB_STEP_SUMMARY
+            echo "- \`fix: description\` - Patch version bump" >> $GITHUB_STEP_SUMMARY
+            echo "- \`feat!: description\` - Major version bump" >> $GITHUB_STEP_SUMMARY
           fi

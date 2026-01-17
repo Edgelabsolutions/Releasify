@@ -241,7 +241,7 @@ class GitHelper:
             True if successful, False otherwise
         """
         from src.config import Config
-        from src.platform import detect_platform, Platform
+        from src.platform import detect_platform
 
         # Auto-detect platform if not provided
         if platform is None:
