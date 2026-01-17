@@ -1,0 +1,26 @@
+# CODEOWNERS - Define code owners for automatic review requests
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners for everything in the repo
+* @ohordon-eslua
+
+# Core Python modules
+/src/ @ohordon-eslua
+
+# Main orchestrator
+/release.py @ohordon-eslua
+
+# Configuration
+/config.yaml @ohordon-eslua
+
+# CI/CD workflows
+/.github/workflows/ @ohordon-eslua
+
+# Docker configuration
+/Dockerfile @ohordon-eslua
+/entrypoint.sh @ohordon-eslua
+
+# Documentation
+/README.md @ohordon-eslua
+/CONTRIBUTING.md @ohordon-eslua
+/SECURITY.md @ohordon-eslua

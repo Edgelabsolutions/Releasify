@@ -1,0 +1,176 @@
+# Releasify Configuration
+# This file configures the release automation behavior for your project
+
+# Platform configuration
+# Determines which platform API to use for creating releases
+# Options:
+#   - auto: Auto-detect from CI environment (GITHUB_ACTIONS or GITLAB_CI)
+#   - gitlab: Use GitLab API (default fallback)
+#   - github: Use GitHub API
+# Can be overridden by RELEASE_PLATFORM environment variable or --platform CLI flag
+platform: auto
+
+# Branch configuration
+# Each branch can be configured to:
+# - type: 'release' (stable releases) or 'prerelease' (pre-release versions)
+# - prerelease: identifier to use for prerelease versions (e.g., dev, alpha, beta, rc)
+branches:
+  # Main release branches (produce stable versions like 1.2.3)
+  - name: main
+    type: release
+    prerelease: null
+
+  - name: master
+    type: release
+    prerelease: null
+
+  # Development branches (produce prerelease versions like 1.2.3-beta.1)
+  - name: dev
+    type: prerelease
+    prerelease: beta
+
+  # Staging branch (produce prerelease versions like 1.2.3-alpha.1)
+  - name: stage
+    type: prerelease
+    prerelease: alpha
+
+  - name: develop
+    type: prerelease
+    prerelease: dev
+
+  # Alpha/Beta/RC branches (support glob patterns)
+  # Example: alpha/new-feature -> 1.2.3-alpha.1
+  - name: alpha/*
+    type: prerelease
+    prerelease: alpha
+
+  - name: beta/*
+    type: prerelease
+    prerelease: beta
+
+  - name: rc/*
+    type: prerelease
+    prerelease: rc
+
+  # Feature branches (support glob patterns)
+  # Example: feat/new-feature -> 1.2.3-feat.1
+  - name: feat/*
+    type: prerelease
+    prerelease: feat
+
+  - name: feature/*
+    type: prerelease
+    prerelease: feat
+
+  # Fix branches (support glob patterns)
+  # Example: fix/bug-123 -> 1.2.3-fix.1
+  - name: fix/*
+    type: prerelease
+    prerelease: fix
+
+  - name: bugfix/*
+    type: prerelease
+    prerelease: fix
+
+  - name: hotfix/*
+    type: prerelease
+    prerelease: hotfix
+
+# Commit type rules (conventional commits)
+# Determines how different commit types affect version bumping
+commit_types:
+  # Breaking changes trigger major version bump (1.x.x -> 2.0.0)
+  breaking:
+    bump: major
+    keywords:
+      - BREAKING CHANGE
+      - BREAKING-CHANGE
+
+  # Features trigger minor version bump (x.1.x -> x.2.0)
+  feat:
+    bump: minor
+    aliases:
+      - feature
+
+  # Fixes trigger patch version bump (x.x.1 -> x.x.2)
+  fix:
+    bump: patch
+    aliases:
+      - bugfix
+      - hotfix
+
+  # Performance improvements trigger patch bump
+  perf:
+    bump: patch
+    aliases: []
+
+  # Reverts trigger patch bump
+  revert:
+    bump: patch
+    aliases: []
+
+# Tag format
+# Use ${version} as placeholder for the version number
+# Examples:
+#   - "${version}" produces: 1.2.3
+#   - "v${version}" produces: v1.2.3
+#   - "release-${version}" produces: release-1.2.3
+tag_format: "${version}"
+
+# Changelog settings
+changelog:
+  # File path for the changelog
+  file: CHANGELOG.md
+
+  # Commit types to include in the changelog
+  # Only these types will appear in the generated changelog
+  include_types:
+    - feat
+    - fix
+    - perf
+    - revert
+    - breaking
+
+# Commit message validation settings
+validation:
+  # Minimum subject length (characters)
+  subject_min_length: 3
+
+  # Maximum subject length (characters)
+  subject_max_length: 100
+
+  # Maximum header length (type + scope + subject)
+  header_max_length: 100
+
+  # Maximum body line length (characters)
+  body_max_line_length: 100
+
+  # Enforce lowercase first letter in subject
+  subject_lowercase: true
+
+  # Optional: List of allowed scopes (empty = allow any)
+  # Example: [api, auth, ui, db, ci, docs]
+  allowed_scopes: []
+
+# Slack notification settings
+# Configure Slack notifications for release events
+slack:
+  # Enable Slack notifications
+  # Can be overridden by SLACK_ENABLED environment variable
+  enabled: false
+
+  # Slack bot token (required if enabled)
+  # Should be set via SLACK_TOKEN environment variable for security
+  # Get token from: https://api.slack.com/apps -> Your App -> OAuth & Permissions
+  token: null
+
+  # Slack channel ID or name (required if enabled)
+  # Examples: "#releases", "C01234ABCDE", "#devops"
+  # Should be set via SLACK_CHANNEL environment variable
+  channel: null
+
+  # Notify on successful releases
+  notify_success: true
+
+  # Notify on failed releases
+  notify_failure: true
