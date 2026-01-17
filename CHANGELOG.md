@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.0.1](https://github.com/Edgelabsolutions/Releasify/compare/1.0.0...0.0.1) (2026-01-17)
+
+### Bug Fixes
+
+* issue with CI ([7906a97](https://github.com/Edgelabsolutions/Releasify/commit/7906a97301a91f3d7637c638b491ff9dcf47d2f9))
+
 ## [1.0.0] - 2025-12-17
 
 ### Features
