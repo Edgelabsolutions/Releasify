@@ -62,8 +62,6 @@ jobs:
   dependency-check:
     name: Outdated Packages
     runs-on: ubuntu-latest
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
