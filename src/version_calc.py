@@ -9,8 +9,6 @@ This module provides:
 Key Algorithm:
 - Stable branches: Increment version based on commit types (major/minor/patch)
 - Prerelease branches: Use latest stable as base, increment counter (1.2.3-dev.1, 1.2.3-dev.2)
-
-See CLAUDE.md for detailed architecture documentation.
 """
 
 import re
