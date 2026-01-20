@@ -46,7 +46,6 @@ jobs:
 
           docker build \
             -t ${IMAGE}:dev-latest \
-            -t ${IMAGE}:dev-${GITHUB_SHA::7} \
             .
 
           echo ""
@@ -59,5 +58,5 @@ jobs:
           IMAGE="${IMAGE,,}"
           echo "## Dev Docker Image Published" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Image:** \`${IMAGE}:dev-latest\`" >> $GITHUB_STEP_SUMMARY
-          echo "**SHA:** \`dev-${GITHUB_SHA::7}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`${IMAGE}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag:** \`dev-latest\`" >> $GITHUB_STEP_SUMMARY

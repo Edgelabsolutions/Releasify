@@ -123,7 +123,6 @@ jobs:
           docker build \
             -t ${IMAGE}:${VERSION} \
             -t ${IMAGE}:latest \
-            -t ${IMAGE}:${GITHUB_SHA::7} \
             .
 
           echo ""
@@ -142,8 +141,7 @@ jobs:
           echo "## Docker Image Published" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Image:** \`${IMAGE}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Version:** \`${VERSION}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**SHA:** \`${GITHUB_SHA::7}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Tags:** \`${VERSION}\`, \`latest\`" >> $GITHUB_STEP_SUMMARY
 
   create-release:
     name: Create Release
