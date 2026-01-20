@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [1.0.1](https://github.com/Edgelabsolutions/Releasify/compare/1.0.0...1.0.1) (2026-01-20)
+
+### Bug Fixes
+
+* issue with hotfix generation for CHANGELOG.md ([f0b45a2](https://github.com/Edgelabsolutions/Releasify/commit/f0b45a26260b0a00ca466f7e819de508d8ba7465))
+
 ## [1.0.0] - 2026-01-18
 
 ### Features
