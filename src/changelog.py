@@ -96,6 +96,9 @@ class ChangelogGenerator:
                 commit_type = "breaking"
             else:
                 commit_type = commit.type
+                type_config = self.config.get_commit_type(commit_type)
+                if type_config and type_config.name != commit_type:
+                    commit_type = type_config.name
 
             # Only include configured types
             if commit_type not in include_types:
