@@ -90,13 +90,16 @@ class SlackNotifier:
         if not self._is_enabled():
             return False
 
+        # Get project name from environment
+        project_name = self._get_project_name()
+
         # Build message blocks for rich formatting
         blocks = [
             {
                 "type": "header",
                 "text": {
                     "type": "plain_text",
-                    "text": "✅ Release Successful",
+                    "text": f"✅ Release Successful - {project_name}",
                     "emoji": True,
                 },
             },
@@ -169,13 +172,16 @@ class SlackNotifier:
         if not self._is_enabled():
             return False
 
+        # Get project name from environment
+        project_name = self._get_project_name()
+
         # Build message blocks
         blocks = [
             {
                 "type": "header",
                 "text": {
                     "type": "plain_text",
-                    "text": "❌ Release Failed",
+                    "text": f"❌ Release Failed - {project_name}",
                     "emoji": True,
                 },
             },
@@ -229,6 +235,24 @@ class SlackNotifier:
             and self.client is not None
             and self.config.channel is not None
         )
+
+    def _get_project_name(self) -> str:
+        """
+        Get project name from environment variables.
+
+        Returns:
+            Project name or "Unknown Project" if not found
+        """
+        # GitLab: CI_PROJECT_NAME
+        if project_name := os.getenv("CI_PROJECT_NAME"):
+            return project_name
+
+        # GitHub: GITHUB_REPOSITORY (format: owner/repo)
+        if github_repo := os.getenv("GITHUB_REPOSITORY"):
+            # Extract just the repo name
+            return github_repo.split("/")[-1]
+
+        return "Unknown Project"
 
     def _send_message(self, blocks: list) -> bool:
         """
