@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [1.2.0](https://github.com/Edgelabsolutions/Releasify/compare/1.1.0...1.2.0) (2026-01-26)
+
+### Features
+
+* add Author info in slack message; upd docs ([f12d036](https://github.com/Edgelabsolutions/Releasify/commit/f12d0360e3ae16d7f5654d025420a6ec97919403))
+
 # [1.1.0](https://github.com/Edgelabsolutions/Releasify/compare/1.0.1...1.1.0) (2026-01-21)
 
 ### Features
