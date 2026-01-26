@@ -90,8 +90,9 @@ class SlackNotifier:
         if not self._is_enabled():
             return False
 
-        # Get project name from environment
+        # Get project name and author from environment
         project_name = self._get_project_name()
+        triggered_by = self._get_triggered_by()
 
         # Build message blocks for rich formatting
         blocks = [
@@ -108,6 +109,7 @@ class SlackNotifier:
                 "fields": [
                     {"type": "mrkdwn", "text": f"*Version:*\n`{version}`"},
                     {"type": "mrkdwn", "text": f"*Branch:*\n`{branch}`"},
+                    {"type": "mrkdwn", "text": f"*Author:*\n{triggered_by}"},
                     {
                         "type": "mrkdwn",
                         "text": "*Status:*\n:white_check_mark: Published",
@@ -172,8 +174,9 @@ class SlackNotifier:
         if not self._is_enabled():
             return False
 
-        # Get project name from environment
+        # Get project name and author from environment
         project_name = self._get_project_name()
+        triggered_by = self._get_triggered_by()
 
         # Build message blocks
         blocks = [
@@ -189,6 +192,7 @@ class SlackNotifier:
                 "type": "section",
                 "fields": [
                     {"type": "mrkdwn", "text": f"*Branch:*\n`{branch}`"},
+                    {"type": "mrkdwn", "text": f"*Author:*\n{triggered_by}"},
                     {"type": "mrkdwn", "text": "*Status:*\n:x: Failed"},
                 ],
             },
@@ -253,6 +257,23 @@ class SlackNotifier:
             return github_repo.split("/")[-1]
 
         return "Unknown Project"
+
+    def _get_triggered_by(self) -> str:
+        """
+        Get the user who triggered the release.
+
+        Returns:
+            Full name (GitLab) or username (GitHub), "Unknown" if not found
+        """
+        # GitLab: GITLAB_USER_NAME (full name)
+        if user := os.getenv("GITLAB_USER_NAME"):
+            return user
+
+        # GitHub: GITHUB_ACTOR (username)
+        if user := os.getenv("GITHUB_ACTOR"):
+            return user
+
+        return "Unknown"
 
     def _send_message(self, blocks: list) -> bool:
         """

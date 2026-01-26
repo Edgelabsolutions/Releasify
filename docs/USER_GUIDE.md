@@ -11,6 +11,7 @@ This guide covers how to use Releasify for automating semantic versioning and re
 - [GitHub Actions Integration](#github-actions-integration)
 - [GitLab CI Integration](#gitlab-ci-integration)
 - [Examples](#examples)
+- [Slack Notifications](#slack-notifications)
 - [Troubleshooting](#troubleshooting)
 
 ---
@@ -213,7 +214,7 @@ validation:
 
 ### Slack Notifications (Optional)
 
-Enable release notifications:
+Enable release notifications in config:
 
 ```yaml
 slack:
@@ -221,6 +222,8 @@ slack:
   # Token and channel should be set via environment variables
   # SLACK_TOKEN and SLACK_CHANNEL
 ```
+
+See [Slack Notifications](#slack-notifications) section for detailed setup.
 
 ### Platform Configuration
 
@@ -651,6 +654,141 @@ tag_format: "mypackage-v${version}"
 
 ---
 
+## Slack Notifications
+
+Releasify can send Slack notifications when releases succeed or fail.
+
+### Setup
+
+1. **Create a Slack App**
+   - Go to [Slack API Apps](https://api.slack.com/apps)
+   - Click "Create New App" → "From scratch"
+   - Give it a name (e.g., "Release Notifier") and select your workspace
+
+2. **Configure Permissions**
+   - Go to "OAuth & Permissions"
+   - Under "Scopes" → "Bot Token Scopes", add `chat:write`
+   - Click "Install to Workspace" and authorize
+
+3. **Get Your Token**
+   - After installation, copy the "Bot User OAuth Token" (starts with `xoxb-`)
+
+4. **Invite Bot to Channel**
+   - In Slack, go to your releases channel
+   - Type `/invite @YourBotName` or right-click channel → "Integrations" → "Add apps"
+
+5. **Set Environment Variables**
+   ```bash
+   export SLACK_TOKEN=xoxb-your-token-here
+   export SLACK_CHANNEL=#releases  # or channel ID like C01234567
+   ```
+
+### Environment Variables
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `SLACK_TOKEN` | Slack bot OAuth token (xoxb-...) | Yes |
+| `SLACK_CHANNEL` | Channel name (#releases) or ID (C01234567) | Yes |
+| `SLACK_ENABLED` | Explicitly enable/disable ("true"/"false") | No |
+
+When `SLACK_ENABLED` is not set, notifications are auto-enabled if both `SLACK_TOKEN` and `SLACK_CHANNEL` are present.
+
+### Notification Content
+
+Notifications include:
+
+| Field | Description |
+|-------|-------------|
+| **Project** | Repository name (from `CI_PROJECT_NAME` or `GITHUB_REPOSITORY`) |
+| **Version** | The released version number |
+| **Branch** | Branch the release was created from |
+| **Author** | Full name (GitLab) or username (GitHub) who triggered the release |
+| **Status** | Success or failure indicator |
+| **Links** | Direct links to view the tag and release |
+
+### Example Notifications
+
+**Success:**
+```
+✅ Release Successful - my-project
+
+Version:    1.2.3
+Branch:     main
+Author:     Oleh Hordon
+Status:     ✅ Published
+
+View Tag • View Release
+```
+
+**Failure:**
+```
+❌ Release Failed - my-project
+
+Branch:     main
+Author:     Oleh Hordon
+Status:     ❌ Failed
+
+Error:
+[error details]
+
+View Pipeline
+```
+
+### GitLab CI Example
+
+```yaml
+release:
+  image: ghcr.io/edgelabsolutions/releasify:latest
+  variables:
+    RELEASE_ACTION: release
+    SLACK_TOKEN: $SLACK_TOKEN      # Set in CI/CD variables
+    SLACK_CHANNEL: $SLACK_CHANNEL  # Set in CI/CD variables
+  script:
+    - /usr/local/bin/entrypoint.sh
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+```
+
+### GitHub Actions Example
+
+```yaml
+release:
+  runs-on: ubuntu-latest
+  container:
+    image: ghcr.io/edgelabsolutions/releasify:latest
+  steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Create Release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
+        SLACK_CHANNEL: "#releases"
+      run: |
+        git config --global --add safe.directory $GITHUB_WORKSPACE
+        python3 /app/release.py release --platform github
+```
+
+### Troubleshooting Slack
+
+**channel_not_found error:**
+- Ensure the bot is invited to the channel (`/invite @BotName`)
+- Try using channel ID instead of name (find it in channel details)
+- For private channels, the bot must be explicitly invited
+
+**invalid_auth error:**
+- Verify the token starts with `xoxb-`
+- Check the token hasn't been revoked
+- Ensure the app is still installed to the workspace
+
+**not_in_channel error:**
+- The bot needs to be added to the channel before posting
+- Use `/invite @BotName` in the channel
+
+---
+
 ## Troubleshooting
 
 ### No Version Bump
@@ -742,13 +880,17 @@ docker run --rm \
 | `PLATFORM` | No | Platform override: `github`, `gitlab`, or `auto` |
 | `GITHUB_TOKEN` | For GitHub | GitHub API token (auto-set in Actions) |
 | `GITLAB_TOKEN` | For GitLab | GitLab API token |
-| `GITHUB_REPOSITORY` | Auto in Actions | Repository in `owner/repo` format |
-| `CI_PROJECT_URL` | Auto in GitLab CI | GitLab project URL |
+| `GITHUB_REPOSITORY` | Auto | Repository in `owner/repo` format (auto-set in Actions) |
+| `GITHUB_ACTOR` | Auto | Username who triggered the workflow (auto-set in Actions) |
+| `CI_PROJECT_URL` | Auto | GitLab project URL (auto-set in GitLab CI) |
+| `CI_PROJECT_NAME` | Auto | GitLab project name (auto-set in GitLab CI) |
+| `GITLAB_USER_NAME` | Auto | Full name of user who triggered pipeline (auto-set in GitLab CI) |
 | `CONFIG_FILE` | No | Custom config path |
 | `DRY_RUN` | No | Set "true" for dry run |
 | `OUTPUT_FILE` | No | Version output file |
-| `SLACK_TOKEN` | No | Slack bot token |
-| `SLACK_CHANNEL` | No | Slack channel |
+| `SLACK_TOKEN` | For Slack | Slack bot OAuth token (xoxb-...) |
+| `SLACK_CHANNEL` | For Slack | Slack channel name (#releases) or ID (C01234567) |
+| `SLACK_ENABLED` | No | Explicitly enable/disable Slack ("true"/"false") |
 
 ---
 
