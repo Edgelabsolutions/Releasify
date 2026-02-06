@@ -4,11 +4,12 @@ Semantic version calculation and prerelease management.
 This module provides:
 - Version class: Parses and formats semantic versions (major.minor.patch-prerelease+build)
 - VersionCalculator: Calculates next version based on conditional commits
-- Prerelease counter management for branch-based versioning
+- Two prerelease modes: counter (1.2.3-dev.1, dev.2) and bump (1.1.0-dev, 1.2.0-dev)
 
 Key Algorithm:
 - Stable branches: Increment version based on commit types (major/minor/patch)
-- Prerelease branches: Use latest stable as base, increment counter (1.2.3-dev.1, 1.2.3-dev.2)
+- Prerelease counter mode: Use latest stable as base, increment counter
+- Prerelease bump mode: Each tag bumps from previous prerelease tag's base version
 """
 
 import re
@@ -95,20 +96,48 @@ class Version:
         else:
             return Version(self.major, self.minor, self.patch)
 
-    def with_prerelease(self, prerelease: str, counter: int = 1) -> "Version":
+    def with_prerelease(
+        self, prerelease: str, counter: Optional[int] = None
+    ) -> "Version":
         """
         Create a new version with prerelease identifier.
 
         Args:
             prerelease: Prerelease identifier (e.g., 'dev', 'alpha', 'beta')
-            counter: Prerelease counter
+            counter: Prerelease counter. If None, no counter suffix (bump mode).
 
         Returns:
             New Version object with prerelease
         """
-        return Version(
-            self.major, self.minor, self.patch, prerelease=f"{prerelease}.{counter}"
-        )
+        if counter is not None:
+            prerelease_str = f"{prerelease}.{counter}"
+        else:
+            prerelease_str = prerelease
+        return Version(self.major, self.minor, self.patch, prerelease=prerelease_str)
+
+    def base(self) -> "Version":
+        """Return a copy without prerelease or build metadata."""
+        return Version(self.major, self.minor, self.patch)
+
+    def get_prerelease_identifier(self) -> Optional[str]:
+        """
+        Extract the prerelease identifier without counter.
+
+        Examples:
+            '1.2.3-dev.1' -> 'dev'
+            '1.2.3-dev'   -> 'dev'
+            '1.2.3'       -> None
+        """
+        if not self.prerelease:
+            return None
+        parts = self.prerelease.split(".")
+        if parts[-1].isdigit() and len(parts) >= 2:
+            return ".".join(parts[:-1])
+        return self.prerelease
+
+    def version_tuple(self) -> tuple:
+        """Return (major, minor, patch) for comparison."""
+        return (self.major, self.minor, self.patch)
 
 
 class VersionCalculator:
@@ -164,12 +193,14 @@ class VersionCalculator:
 
         # Different logic for prerelease vs stable branches
         if branch_config.prerelease:
-            # For prerelease branches, base version on latest stable release
-            return self._calculate_prerelease_version(
-                commits, max_bump, branch_config.prerelease
-            )
+            return self._calculate_prerelease_version(commits, max_bump, branch_config)
         else:
-            # For stable branches, calculate next version normally
+            # For stable branches, check if prerelease tags exist (merge from bump-mode branch)
+            prerelease_version = self._get_version_from_prerelease_tags()
+            if prerelease_version:
+                return prerelease_version
+
+            # Standard stable calculation
             if current_version is None:
                 base_version = Version(0, 0, 0)
             else:
@@ -180,32 +211,73 @@ class VersionCalculator:
             return base_version.bump(max_bump)
 
     def _calculate_prerelease_version(
-        self, commits: List[ParsedCommit], max_bump: BumpType, prerelease_id: str
+        self, commits: List[ParsedCommit], max_bump: BumpType, branch_config
     ) -> Version:
         """
-        Calculate prerelease version based on latest stable release.
+        Calculate prerelease version based on mode.
 
         Args:
             commits: List of parsed commits
             max_bump: Maximum bump type from commits
-            prerelease_id: Prerelease identifier (e.g., 'beta')
+            branch_config: Branch configuration with prerelease settings
 
         Returns:
             Next prerelease version
         """
-        # Get latest stable version (no prerelease)
-        stable_version = self._get_latest_stable_version()
+        prerelease_id = branch_config.prerelease
+        mode = getattr(branch_config, "prerelease_mode", "counter")
 
+        if mode == "bump":
+            return self._calculate_bump_mode_version(max_bump, prerelease_id)
+        else:
+            return self._calculate_counter_mode_version(max_bump, prerelease_id)
+
+    def _calculate_counter_mode_version(
+        self, max_bump: BumpType, prerelease_id: str
+    ) -> Version:
+        """
+        Calculate prerelease version using counter mode (X.Y.Z-id.N).
+
+        Includes regression prevention: base version never goes below
+        the highest existing prerelease tag's base.
+        """
+        stable_version = self._get_latest_stable_version()
         if stable_version is None:
             stable_version = Version(0, 0, 0)
 
-        # Calculate what the next stable version would be
         next_base_version = stable_version.bump(max_bump)
 
-        # Check if there are already prereleases for this base version
-        counter = self._get_prerelease_counter(next_base_version, prerelease_id, "")
+        # Prevent regression: ensure base is not lower than existing prerelease tags
+        latest_prerelease = self._get_latest_prerelease_version(prerelease_id)
+        if latest_prerelease:
+            existing_base = latest_prerelease.base()
+            if existing_base.version_tuple() > next_base_version.version_tuple():
+                next_base_version = existing_base
 
+        counter = self._get_prerelease_counter(next_base_version, prerelease_id, "")
         return next_base_version.with_prerelease(prerelease_id, counter)
+
+    def _calculate_bump_mode_version(
+        self, max_bump: BumpType, prerelease_id: str
+    ) -> Version:
+        """
+        Calculate prerelease version using bump mode (X.Y.Z-id, no counter).
+
+        Each tag bumps from the previous prerelease tag's base version.
+        Example: 1.0.0 → feat → 1.1.0-dev → feat → 1.2.0-dev → fix → 1.2.1-dev
+        """
+        latest_prerelease = self._get_latest_prerelease_version(prerelease_id)
+
+        if latest_prerelease is not None:
+            base_version = latest_prerelease.base()
+            next_version = base_version.bump(max_bump)
+        else:
+            stable_version = self._get_latest_stable_version()
+            if stable_version is None:
+                stable_version = Version(0, 0, 0)
+            next_version = stable_version.bump(max_bump)
+
+        return next_version.with_prerelease(prerelease_id)
 
     def _get_latest_stable_version(self) -> Optional[Version]:
         """
@@ -279,6 +351,85 @@ class VersionCalculator:
         if counters:
             return max(counters) + 1
         return 1
+
+    def _get_latest_prerelease_version(self, prerelease_id: str) -> Optional[Version]:
+        """
+        Get the latest prerelease version matching the given identifier.
+
+        Args:
+            prerelease_id: Prerelease identifier (e.g., 'dev', 'alpha')
+
+        Returns:
+            Latest prerelease Version or None if none exist
+        """
+        all_tags = self.git.get_tags_matching("*")
+
+        prerelease_versions = []
+        for tag in all_tags:
+            try:
+                version = Version.parse(tag)
+                if version.get_prerelease_identifier() == prerelease_id:
+                    prerelease_versions.append(version)
+            except ValueError:
+                continue
+
+        if not prerelease_versions:
+            return None
+
+        # Sort by version components, then by counter
+        def sort_key(v):
+            counter = 0
+            if v.prerelease:
+                parts = v.prerelease.split(".")
+                if parts[-1].isdigit():
+                    counter = int(parts[-1])
+            return (v.major, v.minor, v.patch, counter)
+
+        prerelease_versions.sort(key=sort_key, reverse=True)
+        return prerelease_versions[0]
+
+    def _get_version_from_prerelease_tags(self) -> Optional[Version]:
+        """
+        Check for prerelease tags between last stable and HEAD.
+
+        Used by stable branches to adopt the version from a merged
+        bump-mode prerelease branch (e.g., 1.2.1-dev → 1.2.1).
+
+        Returns:
+            Stripped prerelease version or None if not applicable
+        """
+        stable_version = self._get_latest_stable_version()
+        all_tags = self.git.get_tags_matching("*")
+
+        # Find prerelease tags higher than current stable
+        prerelease_versions = []
+        for tag in all_tags:
+            try:
+                version = Version.parse(tag)
+                if version.prerelease is None:
+                    continue
+                # Only consider prerelease tags with base higher than stable
+                if (
+                    stable_version
+                    and version.base().version_tuple() <= stable_version.version_tuple()
+                ):
+                    continue
+                prerelease_versions.append(version)
+            except ValueError:
+                continue
+
+        if not prerelease_versions:
+            return None
+
+        # Find the highest prerelease base version
+        prerelease_versions.sort(key=lambda v: v.base().version_tuple(), reverse=True)
+        highest = prerelease_versions[0].base()
+
+        logger.info(
+            f"Found prerelease tag {prerelease_versions[0]}, "
+            f"using base version {highest} for stable release"
+        )
+        return highest
 
     def get_current_version(self, stable_only: bool = False) -> Optional[Version]:
         """

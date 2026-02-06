@@ -121,10 +121,17 @@ branches:
     type: release
     prerelease: null
 
-  # Prerelease branch - creates dev versions (1.0.0-dev.1)
+  # Prerelease branch - counter mode (default): 1.0.0-dev.1, 1.0.0-dev.2
   - name: dev
     type: prerelease
     prerelease: dev
+    prerelease_mode: counter
+
+  # Prerelease branch - bump mode: 1.1.0-dev, 1.2.0-dev, 1.2.1-dev
+  - name: develop
+    type: prerelease
+    prerelease: dev
+    prerelease_mode: bump
 
   # Pattern matching - matches alpha/*, beta/*, etc.
   - name: alpha/*
@@ -135,6 +142,39 @@ branches:
     type: prerelease
     prerelease: feature
 ```
+
+### Prerelease Modes
+
+Releasify supports two prerelease versioning modes:
+
+**Counter mode** (default) - Increments a counter on the same base version:
+```
+Stable: 1.0.0
+feat commit -> 1.1.0-dev.1
+feat commit -> 1.1.0-dev.2
+fix commit  -> 1.1.0-dev.3
+Merge to main -> 1.1.0
+```
+
+**Bump mode** - Each tag reflects the actual version bump, no counter:
+```
+Stable: 1.0.0
+feat commit -> 1.1.0-dev
+feat commit -> 1.2.0-dev
+fix commit  -> 1.2.1-dev
+Merge to main -> 1.2.1
+```
+
+Configure per branch with `prerelease_mode`:
+```yaml
+branches:
+  - name: dev
+    type: prerelease
+    prerelease: dev
+    prerelease_mode: bump      # or 'counter' (default)
+```
+
+Bump mode is recommended when you want prerelease tags to accurately reflect the evolving version history. Counter mode is simpler and suitable when you only care about the final stable version.
 
 ### Commit Types
 

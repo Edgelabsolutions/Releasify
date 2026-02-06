@@ -23,9 +23,8 @@ class BranchConfig:
 
     name: str
     type: str  # 'release' or 'prerelease'
-    prerelease: Optional[str] = (
-        None  # Prerelease identifier (e.g., 'dev', 'alpha', 'beta')
-    )
+    prerelease: Optional[str] = None  # Prerelease identifier (e.g., 'dev', 'alpha')
+    prerelease_mode: str = "counter"  # 'counter' (X.Y.Z-id.N) or 'bump' (X.Y.Z-id)
 
 
 @dataclass
@@ -118,6 +117,15 @@ class Config:
 
         # Parse into structured objects
         self.branches = [BranchConfig(**branch) for branch in self.config["branches"]]
+
+        # Validate prerelease_mode values
+        for branch_cfg in self.branches:
+            if branch_cfg.prerelease_mode not in ("counter", "bump"):
+                raise ValueError(
+                    f"Invalid prerelease_mode '{branch_cfg.prerelease_mode}' "
+                    f"for branch '{branch_cfg.name}'. Must be 'counter' or 'bump'."
+                )
+
         self.commit_types = {
             name: CommitTypeConfig(
                 name=name, bump=cfg["bump"], aliases=cfg.get("aliases", [])

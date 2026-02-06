@@ -15,7 +15,7 @@
 
 - **Conventional Commits** - Parses commit messages to determine version bumps
 - **Semantic Versioning** - Handles major.minor.patch versioning based on your commits
-- **Prerelease Support** - Branch-specific prerelease tags (dev.1, alpha.2, beta.3)
+- **Prerelease Support** - Two modes: counter (dev.1, dev.2) or bump (1.1.0-dev, 1.2.0-dev)
 - **Changelog Generation** - Generates CHANGELOG.md with grouped changes
 - **Multi-Platform** - Works with both GitLab and GitHub out of the box
 - **Slack Notifications** - Optional notifications for release success/failure
@@ -171,6 +171,7 @@ branches:
   - name: dev
     type: prerelease
     prerelease: dev
+    prerelease_mode: bump     # or 'counter' (default)
 
 commit_types:
   feat:
@@ -186,7 +187,16 @@ changelog:
   include_types: [feat, fix, perf, revert, breaking]
 ```
 
-See [Configuration Reference](docs/USER_GUIDE.md#configuration) for all options.
+### Prerelease Modes
+
+| Mode | Tags | Example |
+|------|------|---------|
+| `counter` (default) | `X.Y.Z-id.N` | `1.1.0-dev.1` → `1.1.0-dev.2` → `1.1.0-dev.3` |
+| `bump` | `X.Y.Z-id` | `1.1.0-dev` → `1.2.0-dev` → `1.2.1-dev` |
+
+**Counter mode** increments a counter on the same base version. **Bump mode** reflects the actual version bump per commit type - each prerelease tag builds on the previous one.
+
+See [Configuration Reference](docs/USER_GUIDE.md#configuration) and [Prerelease Modes](docs/USER_GUIDE.md#prerelease-modes) for details.
 
 ---
 

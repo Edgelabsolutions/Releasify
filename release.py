@@ -145,6 +145,9 @@ class ReleaseOrchestrator:
             print(
                 f"Prerelease identifier: {Colors.YELLOW}{branch_config.prerelease}{Colors.RESET}"
             )
+            print(
+                f"Prerelease mode: {Colors.YELLOW}{branch_config.prerelease_mode}{Colors.RESET}"
+            )
 
         # Get current version (stable only for release branches)
         is_stable_branch = branch_config.prerelease is None

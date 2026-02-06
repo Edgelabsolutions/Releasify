@@ -14,6 +14,9 @@ platform: auto
 # Each branch can be configured to:
 # - type: 'release' (stable releases) or 'prerelease' (pre-release versions)
 # - prerelease: identifier to use for prerelease versions (e.g., dev, alpha, beta, rc)
+# - prerelease_mode: 'counter' or 'bump'
+#     counter: X.Y.Z-id.1, X.Y.Z-id.2, X.Y.Z-id.3 (default)
+#     bump:    X.Y.Z-id increments per commit type (1.1.0-dev, 1.2.0-dev, 1.2.1-dev)
 branches:
   # Main release branches (produce stable versions like 1.2.3)
   - name: main
@@ -28,53 +31,64 @@ branches:
   - name: dev
     type: prerelease
     prerelease: beta
+    prerelease_mode: counter
 
   # Staging branch (produce prerelease versions like 1.2.3-alpha.1)
   - name: stage
     type: prerelease
     prerelease: alpha
+    prerelease_mode: counter
 
   - name: develop
     type: prerelease
     prerelease: dev
+    prerelease_mode: counter
 
   # Alpha/Beta/RC branches (support glob patterns)
   # Example: alpha/new-feature -> 1.2.3-alpha.1
   - name: alpha/*
     type: prerelease
     prerelease: alpha
+    prerelease_mode: counter
 
   - name: beta/*
     type: prerelease
     prerelease: beta
+    prerelease_mode: counter
 
   - name: rc/*
     type: prerelease
     prerelease: rc
+    prerelease_mode: counter
 
   # Feature branches (support glob patterns)
   # Example: feat/new-feature -> 1.2.3-feat.1
   - name: feat/*
     type: prerelease
     prerelease: feat
+    prerelease_mode: counter
 
   - name: feature/*
     type: prerelease
     prerelease: feat
+    prerelease_mode: counter
 
   # Fix branches (support glob patterns)
   # Example: fix/bug-123 -> 1.2.3-fix.1
   - name: fix/*
     type: prerelease
     prerelease: fix
+    prerelease_mode: counter
 
   - name: bugfix/*
     type: prerelease
     prerelease: fix
+    prerelease_mode: counter
 
   - name: hotfix/*
     type: prerelease
     prerelease: hotfix
+    prerelease_mode: counter
 
 # Commit type rules (conventional commits)
 # Determines how different commit types affect version bumping
