@@ -186,6 +186,19 @@ class ReleaseOrchestrator:
             f"Conventional commits found: {Colors.CYAN}{len(parsed_commits)}{Colors.RESET}\n"
         )
 
+        # Show warning with raw commit messages when none parse
+        if not parsed_commits and commits_data:
+            print(
+                f"{Colors.YELLOW}⚠️  No conventional commits found. Raw commit messages:{Colors.RESET}"
+            )
+            for sha, message in commits_data:
+                first_line = message.split("\n")[0][:120]
+                print(f"  {Colors.RED}{sha[:7]}{Colors.RESET}: {first_line}")
+            print(
+                f"\n{Colors.YELLOW}Expected format: type(scope): description"
+                f" (e.g., feat: add feature, fix(api): resolve bug){Colors.RESET}\n"
+            )
+
         # Display commit summary
         if parsed_commits:
             self._display_commit_summary(parsed_commits)

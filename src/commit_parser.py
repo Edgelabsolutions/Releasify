@@ -8,9 +8,13 @@ This module:
 """
 
 import re
+import logging
 from dataclasses import dataclass
 from typing import Optional, List
 from enum import Enum
+
+# Configure module logger
+logger = logging.getLogger(__name__)
 
 
 class BumpType(Enum):
@@ -45,9 +49,11 @@ class ParsedCommit:
 class ConventionalCommitParser:
     """Parser for conventional commits."""
 
-    # Regex for conventional commit format: type(scope): subject
+    # Regex for conventional commit format: type(scope)!: subject
+    # The optional '!' before ':' indicates a breaking change (per Conventional Commits spec)
     COMMIT_PATTERN = re.compile(
-        r"^(?P<type>\w+)(?:\((?P<scope>[^)]+)\))?\s*:\s*(?P<subject>.+)$", re.MULTILINE
+        r"^(?P<type>\w+)(?:\((?P<scope>[^)]+)\))?(?P<breaking_mark>!)?\s*:\s*(?P<subject>.+)$",
+        re.MULTILINE,
     )
 
     # Breaking change indicators
@@ -89,6 +95,9 @@ class ConventionalCommitParser:
         match = self.COMMIT_PATTERN.match(header)
 
         if not match:
+            logger.debug(
+                f"Skipping non-conventional commit {commit_sha[:7]}: '{header}'"
+            )
             return None
 
         commit_type = match.group("type").lower()
@@ -166,10 +175,21 @@ class ConventionalCommitParser:
             List of ParsedCommit objects
         """
         parsed = []
+        skipped = []
         for sha, message in commits:
             commit = self.parse(message, sha)
             if commit:
                 parsed.append(commit)
+            else:
+                skipped.append((sha, message))
+
+        if skipped:
+            logger.warning(
+                f"{len(skipped)} commit(s) skipped (not conventional format):"
+            )
+            for sha, message in skipped:
+                first_line = message.split("\n")[0][:120]
+                logger.warning(f"  {sha[:7]}: {first_line}")
 
         return parsed
 
